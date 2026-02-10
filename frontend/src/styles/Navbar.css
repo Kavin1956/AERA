@@ -1,0 +1,284 @@
+/* Navbar.css */
+
+.navbar {
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  color: white;
+  padding: 1rem 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.navbar-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+}
+
+.navbar-brand {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.navbar-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.navbar-subtitle {
+  font-size: 0.8rem;
+  margin: 0;
+  opacity: 0.8;
+}
+
+.navbar-middle {
+  flex: 1;
+  text-align: center;
+}
+
+.navbar-role {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  display: inline-block;
+}
+
+.navbar-right {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.username {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.logout-btn {
+  background: #e74c3c;
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.logout-btn:hover {
+  background: #c0392b;
+  transform: translateY(-2px);
+}
+
+.logout-btn:active {
+  transform: translateY(0);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .navbar-container {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .navbar-brand {
+    flex: 1 1 100%;
+  }
+
+  .navbar-middle,
+  .navbar-right {
+    flex: 1 1 auto;
+  }
+
+  .navbar-title {
+    font-size: 1.2rem;
+  }
+
+  .navbar-right {
+    justify-content: space-between;
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0.75rem 1rem;
+  }
+
+  .navbar-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .navbar-brand {
+    flex: 1 1 100%;
+  }
+
+  .navbar-title {
+    font-size: 1rem;
+  }
+
+  .navbar-subtitle {
+    font-size: 0.75rem;
+  }
+
+  .navbar-middle {
+    width: 100%;
+    text-align: center;
+  }
+
+  .navbar-role {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    display: inline-block;
+  }
+
+  .navbar-right {
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .username {
+    font-size: 0.9rem;
+  }
+
+  .logout-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .navbar {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .navbar-container {
+    gap: 0.5rem;
+  }
+
+  .navbar-brand {
+    margin-bottom: 0.5rem;
+  }
+
+  .navbar-title {
+    font-size: 1rem;
+    margin: 0 0 0.25rem 0;
+  }
+
+  .navbar-subtitle {
+    font-size: 0.65rem;
+    opacity: 0.7;
+  }
+
+  .navbar-role {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+  }
+
+  .logout-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .user-info {
+    gap: 0.25rem;
+  }
+
+  .username {
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar {
+    padding: 0.5rem;
+  }
+
+  .navbar-container {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .navbar-brand {
+    display: flex;
+    gap: 0;
+  }
+
+  .navbar-title {
+    font-size: 0.9rem;
+    margin: 0;
+  }
+
+  .navbar-subtitle {
+    display: none;
+  }
+
+  .navbar-middle {
+    width: 100%;
+    order: 3;
+  }
+
+  .navbar-role {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+    width: 100%;
+    text-align: center;
+  }
+
+  .navbar-right {
+    order: 2;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  .user-info {
+    min-width: 0;
+  }
+
+  .username {
+    font-size: 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .logout-btn {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+    height: 32px;
+    min-width: 32px;
+  }
+}
+
+/* Touch Device Optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .logout-btn {
+    min-height: 44px;
+    padding: 0.5rem 1rem;
+  }
+
+  .logout-btn:active {
+    opacity: 0.8;
+  }
+}
