@@ -149,6 +149,7 @@ function Technician({ userName, onLogout }) {
         </div>
 
         <div className="technician-content">
+          {loading && <div className="loading-message" style={{ padding: '20px' }}>Loading tasks...</div>}
           <div className="dashboard-stats">
             <div className="stat-card">
               <h4>Total Tasks</h4>

@@ -196,3 +196,56 @@ exports.completeIssue = async (req, res) => {
     });
   }
 };
+
+// Manager updates issue status, risk, analysis notes and optionally assigns a technician
+exports.updateIssueStatus = async (req, res) => {
+  try {
+    const { status, technicianType, risk, analysisNotes } = req.body;
+
+    const update = {};
+    if (status) update.status = status;
+    if (technicianType) update.technicianType = technicianType;
+    if (risk) update.risk = risk;
+    if (analysisNotes) update.analysisNotes = analysisNotes;
+
+    // If assigning, find a technician of that type and set assignedTechnician
+    if (status === 'assigned' && technicianType) {
+      const technician = await User.findOne({ role: 'technician', technicianType });
+      if (technician) update.assignedTechnician = technician._id;
+      update['timestamps.assigned'] = new Date();
+    }
+
+    if (status === 'completed') {
+      update['timestamps.completed'] = new Date();
+    }
+
+    const issue = await Issue.findByIdAndUpdate(
+      req.params.id,
+      update,
+      { new: true }
+    )
+      .populate('submittedBy', 'username fullName')
+      .populate('assignedTechnician', 'username fullName technicianType');
+
+    if (!issue) {
+      return res.status(404).json({ message: 'Issue not found' });
+    }
+
+    // Add history entry
+    issue.history = issue.history || [];
+    issue.history.push({
+      action: 'update',
+      by: req.user?.id,
+      role: req.user?.role,
+      timestamp: new Date(),
+      details: { status, technicianType, risk, analysisNotes }
+    });
+
+    await issue.save();
+
+    res.json(issue);
+  } catch (error) {
+    console.error('Update issue status error:', error);
+    res.status(500).json({ message: 'Error updating issue status' });
+  }
+};

@@ -112,6 +112,21 @@ const connectDB = async (options = {}) => {
   // make mongoose quieter and predictable
   mongoose.set('strictQuery', true);
 
+  // If an explicit fallback URI is provided, try it first to avoid SRV/DNS issues (useful in restricted networks)
+  if (process.env.MONGO_FALLBACK_URI) {
+    try {
+      await mongoose.connect(process.env.MONGO_FALLBACK_URI, {
+        serverSelectionTimeoutMS: 15000,
+        family: 4
+      });
+      console.log('✅ MongoDB Connected via MONGO_FALLBACK_URI (preferred)');
+      return;
+    } catch (fallbackErr) {
+      console.warn('⚠️ Preferred MONGO_FALLBACK_URI failed:', fallbackErr.message);
+      console.warn('⚠️ Will attempt primary MONGO_URI (may be +srv) as a fallback');
+    }
+  }
+
   const maxAttempts = options.maxAttempts || 5;
   const baseDelay = options.baseDelay || 3000; // 3s
 

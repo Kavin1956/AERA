@@ -1,3 +1,20 @@
+// import React from 'react';
+// import '../styles/DataCollector.css';
+// import Navbar from '../components/Navbar';
+
+// export default function DataCollector({ userName, onLogout }) {
+//   return (
+//     <div className="data-collector-container">
+//       <Navbar userName={userName} role="Data Collector" onLogout={onLogout} />
+//       <div className="data-collector-main">
+//         <h2>Data Collector</h2>
+//         <p>The Data Collector UI was temporarily disabled to fix a syntax error. Form functionality can be restored on request.</p>
+//       </div>
+//     </div>
+//   );
+// }
+
+
 import React, { useState, useEffect } from 'react';
 import '../styles/DataCollector.css';
 import Navbar from '../components/Navbar';
@@ -917,3 +934,5 @@ function DataCollector({ userName, onLogout }) {
 }
 
 export default DataCollector;
+
+

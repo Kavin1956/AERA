@@ -20,6 +20,8 @@ function Manager({ userName, onLogout }) {
   const [showDetails, setShowDetails] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedTechnicianType, setSelectedTechnicianType] = useState('');
+  const [analysisRisk, setAnalysisRisk] = useState('');
+  const [analysisNotes, setAnalysisNotes] = useState('');
   const [activeTab, setActiveTab] = useState('current');
   const [analyticsData, setAnalyticsData] = useState({});
 
@@ -101,12 +103,20 @@ function Manager({ userName, onLogout }) {
     const sevenDaysAgo = new Date(new Date().setDate(new Date().getDate() - 7));
     const weeklyIssues = issues.filter(i => i.submittedTimestamp >= sevenDaysAgo);
 
+    // Count by technician/issue type
+    const countsByType = issues.reduce((acc, it) => {
+      const key = it.technicianType || it.issueType || 'Others';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
     setAnalyticsData({
       submitted,
       assigned,
       completed,
       total,
       weeklyTotal: weeklyIssues.length,
+      countsByType,
       weeklyByPriority: {
         1: weeklyIssues.filter(i => i.priority === 1).length,
         2: weeklyIssues.filter(i => i.priority === 2).length,
@@ -117,35 +127,30 @@ function Manager({ userName, onLogout }) {
     });
   }, [issues]);
 
-  const handleAssignTechnician = async (issueId) => {
-    if (!selectedTechnicianType.trim()) {
-      alert('Please select a technician type');
-      return;
-    }
-
-    const assignedTechnician = getNextAvailableTechnician(selectedTechnicianType);
-
+  const handleSaveAnalysisAndAssign = async (issueId) => {
     try {
-      // Call backend API to assign technician
-      const response = await issueAPI.assignIssue(issueId, assignedTechnician, selectedTechnicianType);
-      console.log('✅ Assign response:', response.data);
-      
-      // Update local state
-      setIssues(issues.map(i =>
-        i._id === issueId ? { 
-          ...response.data,
-          assignedTechnicianType: selectedTechnicianType
-        } : i
-      ));
+      const payload = {
+        risk: analysisRisk || undefined,
+        analysisNotes: analysisNotes || undefined,
+        technicianType: selectedTechnicianType || undefined,
+        status: 'assigned'
+      };
 
-      alert(`Issue assigned to ${assignedTechnician}\nTechnician Type: ${selectedTechnicianType}`);
+      const response = await issueAPI.updateIssueStatus(issueId, payload);
+      console.log('✅ Analysis & Assign response:', response.data);
+
+      // Update local state
+      setIssues(issues.map(i => i._id === issueId ? response.data : i));
+
+      alert('Analysis saved and issue assigned.');
       setSelectedTechnicianType('');
+      setAnalysisRisk('');
+      setAnalysisNotes('');
       setShowDetails(false);
     } catch (err) {
-      console.error('❌ Assign technician error:', err);
-      console.error('Error response:', err.response?.data);
+      console.error('❌ Save analysis / assign error:', err);
       const errorMsg = err.response?.data?.details || err.response?.data?.message || err.message;
-      alert(`Failed to assign technician: ${errorMsg}`);
+      alert(`Failed to save analysis or assign: ${errorMsg}`);
     }
   };
 
@@ -472,6 +477,7 @@ function Manager({ userName, onLogout }) {
                   <h4>Issue Details</h4>
                   <p><strong>Priority Level:</strong> <span className={`priority-badge priority-${selectedIssue.priority}`}>P{selectedIssue.priority}</span></p>
                   <p><strong>Problem Severity:</strong> <span className={`severity-badge severity-${selectedIssue.problemLevel?.toLowerCase()}`}>{selectedIssue.problemLevel || 'Not assessed'}</span></p>
+                  <p><strong>Risk Level:</strong> <span className={`risk-badge`}>{selectedIssue.risk || 'Not assessed'}</span></p>
                   <p><strong>Technician Type Needed:</strong> {selectedIssue.technicianType || 'Not assigned'}</p>
                   <p><strong>Status:</strong> {selectedIssue.status}</p>
                   {selectedIssue.assignedTechnician && <p><strong>Assigned To:</strong> {selectedIssue.assignedTechnician?.fullName || selectedIssue.assignedTechnician?.username || 'Unassigned'}</p>}
@@ -512,11 +518,45 @@ function Manager({ userName, onLogout }) {
                     <p>{selectedIssue.analysisNotes}</p>
                   </div>
                 )}
+
+                {selectedIssue.history && selectedIssue.history.length > 0 && (
+                  <div className="detail-section history-section">
+                    <h4>Issue History</h4>
+                    {selectedIssue.history.slice().reverse().map((h, idx) => (
+                      <p key={idx}><strong>{h.action}</strong> by {h.role || 'Unknown'} at {new Date(h.timestamp).toLocaleString()}. {h.details ? JSON.stringify(h.details) : ''}</p>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {selectedIssue.status === 'submitted' && (
                 <div className="analysis-section">
-                  <h4>Assign Technician</h4>
+                  <h4>Manager Analysis & Assign</h4>
+
+                  <div className="form-group">
+                    <label>Risk Level</label>
+                    <select
+                      value={analysisRisk}
+                      onChange={(e) => setAnalysisRisk(e.target.value)}
+                      className="form-input form-select"
+                    >
+                      <option value="">Select risk...</option>
+                      <option value="High">High</option>
+                      <option value="Moderate">Moderate</option>
+                      <option value="Low">Low</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Analysis Notes</label>
+                    <textarea
+                      value={analysisNotes}
+                      onChange={(e) => setAnalysisNotes(e.target.value)}
+                      className="form-input form-textarea"
+                      rows={4}
+                    />
+                  </div>
+
                   <div className="form-group">
                     <label>Select Technician Type:</label>
                     <select
@@ -527,10 +567,12 @@ function Manager({ userName, onLogout }) {
                       <option value="">Choose technician type...</option>
                       <option value="Water Management">Water Management</option>
                       <option value="Electricity">Electricity</option>
+                      <option value="Networking">Networking</option>
                       <option value="Cleaning">Cleaning</option>
                       <option value="Others">Others</option>
                     </select>
                   </div>
+
                   <p className="info-text">Recommended: {selectedIssue.technicianType || 'Not determined'}</p>
                   {selectedTechnicianType && (
                     <p className="auto-assign-text">
@@ -553,9 +595,9 @@ function Manager({ userName, onLogout }) {
                 <>
                   <button
                     className="assign-btn"
-                    onClick={() => handleAssignTechnician(selectedIssue._id)}
+                    onClick={() => handleSaveAnalysisAndAssign(selectedIssue._id)}
                   >
-                    Assign to Technician
+                    Save Analysis & Assign
                   </button>
                 </>
               )}

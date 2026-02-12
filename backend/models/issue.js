@@ -17,6 +17,19 @@ const issueSchema = new mongoose.Schema({
   priority: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Medium' },
 
   technicianType: String,
+  issueType: String, // e.g., Electrical / Networking / Other
+  risk: { type: String, enum: ['Low', 'Moderate', 'High'] },
+  analysisNotes: String,
+  history: [
+    {
+      action: String,
+      by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      role: String,
+      timestamp: Date,
+      details: Object
+    }
+  ],
+
   assignedTechnician: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

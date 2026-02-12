@@ -6,7 +6,7 @@ import { authAPI } from '../services/api';
 function Login({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('data_collector');
+
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -23,7 +23,7 @@ function Login({ onLogin }) {
     setError('');
 
     try {
-      const response = await authAPI.login(username, password, role);
+      const response = await authAPI.login(username, password);
       const { token, role: userRole, username: userName } = response.data;
       
       // Store token and user info
@@ -83,19 +83,7 @@ function Login({ onLogin }) {
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="role" className="form-label">Role</label>
-            <select
-              id="role"
-              className="form-input form-select"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-            >
-              <option value="data_collector">Data Collector</option>
-              <option value="manager">Manager</option>
-              <option value="technician">Technician</option>
-            </select>
-          </div>
+
 
           {error && <div className="error-message">{error}</div>}
 

@@ -89,6 +89,14 @@ router.put(
   issueController.assignIssue
 );
 
+// Update issue status / manager analysis (Manager)
+router.put(
+  '/:id/status',
+  auth,
+  role('manager'),
+  issueController.updateIssueStatus
+);
+
 // Complete issue (Technician)
 router.put(
   '/:id/complete',
