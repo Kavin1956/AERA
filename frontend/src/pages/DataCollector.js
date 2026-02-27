@@ -34,7 +34,7 @@ function DataCollector({ userName, onLogout }) {
     const fetchIssues = async () => {
       try {
         const response = await issueAPI.getAllIssues();
-        console.log('📥 All issues from backend:', response.data);
+        if (process.env.REACT_APP_DEBUG === 'true') console.debug('📥 All issues from backend:', response.data);
         
         // Show ALL issues (not just user's for now for debugging)
         setIssues(response.data || []);
@@ -166,33 +166,33 @@ function DataCollector({ userName, onLogout }) {
     // Priority based on condition and location type
     const severity = formData.condition?.toLowerCase();
     let priority = 'Low'; // Default: Low priority
-    let technicianType = 'Others';
+    let technicianType = 'others';
 
     // Water supply issues -> High priority
     if (formData.powerSupply?.toLowerCase().includes('water') || 
         formData.waterSupply) {
       priority = 'High';
-      technicianType = 'Water Management';
+      technicianType = 'water';
     }
     // Projector problems -> High priority
     else if (formData.projector === 'Not Working' || 
              formData.projector === 'not_working') {
       priority = 'High';
-      technicianType = 'Electricity';
+      technicianType = 'electricity';
     }
     // Electricity/power supply or AC not working -> High priority
     else if (formData.powerSupply?.toLowerCase().includes('outage') || 
              formData.powerSupply === 'Frequent Outages' ||
              formData.ac === 'Not Working') {
       priority = 'High';
-      technicianType = 'Electricity';
+      technicianType = 'electricity';
     }
     // Cleanliness or poor condition -> Medium priority
     else if (formData.whiteboard === 'Poor' || 
              formData.whiteboards === 'Poor' ||
              severity === 'poor') {
       priority = 'Medium';
-      technicianType = 'Cleaning';
+      technicianType = 'cleaning';
     }
 
     return { priority, technicianType };
@@ -208,11 +208,24 @@ function DataCollector({ userName, onLogout }) {
     setError('');
 
     try {
-      console.log('\n📤 Submitting Issue:');
-      console.log('Token:', localStorage.getItem('token')?.substring(0, 30) + '...');
-      console.log('User Role:', localStorage.getItem('userRole'));
-      console.log('User Name:', localStorage.getItem('userName'));
-      
+      if (process.env.REACT_APP_DEBUG === 'true') {
+        console.debug('\n📤 Submitting Issue:');
+        console.debug('Token:', localStorage.getItem('token')?.substring(0, 30) + '...');
+        console.debug('User Role:', localStorage.getItem('userRole'));
+        console.debug('User Name:', localStorage.getItem('userName'));
+        console.debug('Issue Data:', {
+          userType,
+          locationCategory,
+          block: formData.block,
+          floor: formData.floor,
+          roomNumber: formData.roomNumber,
+          condition: formData.condition,
+          problemLevel,
+          priority,
+          technicianType
+        });
+      }
+
       const issueData = {
         userType,
         locationCategory,
@@ -228,23 +241,23 @@ function DataCollector({ userName, onLogout }) {
         status: 'submitted'
       };
 
-      console.log('Issue Data:', issueData);
-
       // Send to backend API
       const response = await issueAPI.createIssue(issueData);
       console.log('✅ Issue submitted successfully:', response.data);
       
-      alert(`Issue submitted successfully!\nPriority: P${priority}\nProblem Level: ${problemLevel}\nTechnician Type: ${technicianType}`);
+      // Immediately show the newly created issue in the UI for the submitter
+      setIssues(prev => [response.data, ...(prev || [])]);
+
+      alert(`Issue submitted successfully!\nPriority: ${priority}\nProblem Level: ${problemLevel}\nTechnician Type: ${technicianType}`);
       
-      // Refresh issues list
-      try {
-        const updatedIssuesResponse = await issueAPI.getAllIssues();
-        setIssues(updatedIssuesResponse.data || []);
-        console.log('✅ Issues refreshed:', updatedIssuesResponse.data);
-      } catch (refreshErr) {
-        console.error('⚠️ Could not refresh issues list:', refreshErr);
-      }
-      
+      // Background: still attempt to refresh from server (best-effort)
+      issueAPI.getAllIssues().then(r => {
+        setIssues(r.data || []);
+        console.log('🔁 Background refresh succeeded');
+      }).catch(() => {
+        console.warn('⚠️ Background refresh failed — using optimistic update');
+      });
+
       // Reset form
       setFormData({});
       setUserType('');

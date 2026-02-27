@@ -4,12 +4,12 @@ import Navbar from '../components/Navbar';
 import { issueAPI } from '../services/api';
 
 function Manager({ userName, onLogout }) {
-  // Available technicians by type
-  const techniciansDatabase = {
-    'Water Management': ['Tech-WM-01', 'Tech-WM-02', 'Tech-WM-03'],
-    'Electricity': ['Tech-EL-01', 'Tech-EL-02', 'Tech-EL-03'],
-    'Cleaning': ['Tech-CL-01', 'Tech-CL-02', 'Tech-CL-03'],
-    'Others': ['Tech-OTH-01', 'Tech-OTH-02']
+  // Available technician types
+  const TECHNICIAN_TYPES = {
+    'water': 'Water Management',
+    'electricity': 'Electricity',
+    'cleaning': 'Cleaning',
+    'others': 'Others'
   };
 
   const [issues, setIssues] = useState([]);
@@ -30,7 +30,7 @@ function Manager({ userName, onLogout }) {
     const fetchIssues = async () => {
       try {
         const response = await issueAPI.getAllIssues();
-        console.log('📥 Issues loaded in Manager:', response.data?.length, 'issues');
+        if (process.env.REACT_APP_DEBUG === 'true') console.debug('📥 Issues loaded in Manager:', response.data?.length, 'issues');
         setIssues(response.data || []);
         setError('');
       } catch (err) {
@@ -49,11 +49,9 @@ function Manager({ userName, onLogout }) {
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-assign next available technician of selected type
-  const getNextAvailableTechnician = (techType) => {
-    const technicians = techniciansDatabase[techType] || [];
-    // Simple round-robin: just take the first one (in real system, check availability)
-    return technicians[0] || `${techType}-Tech`;
+  // Get display name for technician type
+  const getTechnicianTypeDisplay = (techType) => {
+    return TECHNICIAN_TYPES[techType] || techType;
   };
 
   // Auto-check for alerts every minute
@@ -129,15 +127,23 @@ function Manager({ userName, onLogout }) {
 
   const handleSaveAnalysisAndAssign = async (issueId) => {
     try {
+      const typeToAssign = selectedTechnicianType || selectedIssue?.technicianType;
       const payload = {
         risk: analysisRisk || undefined,
         analysisNotes: analysisNotes || undefined,
-        technicianType: selectedTechnicianType || undefined,
+        technicianType: typeToAssign || undefined,
         status: 'assigned'
       };
 
+      console.log('📤 Assigning issue:', issueId);
+      console.log('   Payload:', payload);
+      console.log('   selectedTechnicianType:', typeToAssign);
+
       const response = await issueAPI.updateIssueStatus(issueId, payload);
-      console.log('✅ Analysis & Assign response:', response.data);
+      console.log('✅ Response received:', response.data);
+      console.log('   Issue technicianType:', response.data.technicianType);
+      console.log('   Issue status:', response.data.status);
+      console.log('   Assigned to:', response.data.assignedTechnician?.username);
 
       // Update local state
       setIssues(issues.map(i => i._id === issueId ? response.data : i));
@@ -565,18 +571,17 @@ function Manager({ userName, onLogout }) {
                       className="form-input form-select"
                     >
                       <option value="">Choose technician type...</option>
-                      <option value="Water Management">Water Management</option>
-                      <option value="Electricity">Electricity</option>
-                      <option value="Networking">Networking</option>
-                      <option value="Cleaning">Cleaning</option>
-                      <option value="Others">Others</option>
+                      <option value="water">Water Management</option>
+                      <option value="electricity">Electricity</option>
+                      <option value="cleaning">Cleaning</option>
+                      <option value="others">Others</option>
                     </select>
                   </div>
 
-                  <p className="info-text">Recommended: {selectedIssue.technicianType || 'Not determined'}</p>
+                  <p className="info-text">Recommended: {getTechnicianTypeDisplay(selectedIssue.technicianType) || 'Not determined'}</p>
                   {selectedTechnicianType && (
                     <p className="auto-assign-text">
-                      Will assign: <strong>{getNextAvailableTechnician(selectedTechnicianType)}</strong>
+                      Will assign to: <strong>{getTechnicianTypeDisplay(selectedTechnicianType)}</strong>
                     </p>
                   )}
                 </div>

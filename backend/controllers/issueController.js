@@ -3,17 +3,20 @@ const User = require('../models/User');
 
 exports.createIssue = async (req, res) => {
   try {
-    console.log('\n📝 Create Issue Request:');
-    console.log('User ID:', req.user?.id);
-    console.log('User Role:', req.user?.role);
-    console.log('Issue Data:', req.body);
-    
+    if (process.env.DEBUG_ISSUE === 'true') {
+      console.debug('\n📝 Create Issue Request:');
+      console.debug('User ID:', req.user?.id);
+      console.debug('User Role:', req.user?.role);
+      console.debug('Issue Data:', req.body);
+    }
+
     const issue = await Issue.create({
       ...req.body,
       submittedBy: req.user.id
     });
-    
-    console.log('✅ Issue created:', issue._id);
+
+    // Keep a single informative server log for successful creates
+    console.info('✅ Issue created:', issue._id);
     res.status(201).json(issue);
   } catch (error) {
     console.error('❌ Create issue error:', error);
@@ -28,27 +31,46 @@ exports.createIssue = async (req, res) => {
 exports.getAllIssues = async (req, res) => {
   try {
     // Managers see all issues;
-    // Technicians see only issues assigned to their technicianType;
+    // Technicians see only issues assigned to their technicianType (case-insensitive);
     // Data collectors (and others) see only their submitted issues
     let filter = {};
-    if (req.user?.role === 'manager') {
+    const userRole = req.user?.role;
+    const userId = req.user?.id;
+    
+    console.log(`\n📥 getAllIssues called by ${req.user?.username} (role: ${userRole})`);
+
+    if (userRole === 'manager') {
       filter = {};
-    } else if (req.user?.role === 'technician') {
+      console.log(`   manager: showing all issues`);
+    } else if (userRole === 'technician') {
       // Technicians should see issues either assigned to them, or matching their technicianType
-      const techType = req.user.technicianType;
-      filter = {
-        $or: [
-          { assignedTechnician: req.user.id },
-          ...(techType ? [{ technicianType: techType }] : [])
-        ]
-      };
+      const techType = req.user.technicianType?.toLowerCase();
+      if (techType) {
+        // Use case-insensitive regex for matching
+        filter = {
+          $or: [
+            { assignedTechnician: userId },
+            { technicianType: { $regex: `^${techType}$`, $options: 'i' } }
+          ]
+        };
+        console.log(`   technician: techType=${techType}, filter set`);
+      } else {
+        // If technician has no type, only show assigned to them
+        filter = { assignedTechnician: userId };
+        console.log(`   technician: no type, showing only assigned`);
+      }
     } else {
-      filter = { submittedBy: req.user.id };
+      // Data collectors see only their submitted issues (NOT technician issues)
+      filter = { submittedBy: userId };
+      console.log(`   data_collector: showing only own submitted issues`);
     }
 
     const issues = await Issue.find(filter)
       .populate('submittedBy', 'username fullName')
       .populate('assignedTechnician', 'username fullName technicianType');
+    
+    console.log(`   found ${issues.length} issues`);
+    
     res.json(issues);
   } catch (error) {
     console.error('❌ Get issues error:', error);
@@ -126,10 +148,10 @@ exports.assignIssue = async (req, res) => {
       return res.status(400).json({ message: 'technicianType is required' });
     }
 
-    // Find technician by type
+    // Find technician by type (case-insensitive)
     const technician = await User.findOne({
       role: 'technician',
-      technicianType
+      technicianType: { $regex: `^${technicianType.toLowerCase()}$`, $options: 'i' }
     });
 
     if (!technician) {
@@ -139,8 +161,8 @@ exports.assignIssue = async (req, res) => {
     const issue = await Issue.findByIdAndUpdate(
       req.params.id,
       {
-        assignedTechnician: technician._id, // ✅ KEY LINE
-        technicianType,
+        assignedTechnician: technician._id,
+        technicianType: technicianType.toLowerCase(), // ✅ Store in lowercase
         status: 'assigned',
         'timestamps.assigned': new Date()
       },
@@ -164,10 +186,12 @@ exports.assignIssue = async (req, res) => {
 
 exports.completeIssue = async (req, res) => {
   try {
-    console.log('\n✅ Complete Issue Request:');
-    console.log('Issue ID:', req.params.id);
-    console.log('User Role:', req.user?.role);
-    
+    if (process.env.DEBUG_ISSUE === 'true') {
+      console.debug('\n✅ Complete Issue Request:');
+      console.debug('Issue ID:', req.params.id);
+      console.debug('User Role:', req.user?.role);
+    }
+
     const issue = await Issue.findByIdAndUpdate(
       req.params.id,
       {
@@ -185,7 +209,7 @@ exports.completeIssue = async (req, res) => {
       });
     }
 
-    console.log('✅ Issue completed:', issue._id);
+    console.info('✅ Issue completed:', issue._id);
     res.json(issue);
   } catch (error) {
     console.error('❌ Complete issue error:', error);
@@ -202,16 +226,31 @@ exports.updateIssueStatus = async (req, res) => {
   try {
     const { status, technicianType, risk, analysisNotes } = req.body;
 
+    console.log(`\n📝 updateIssueStatus for issue: ${req.params.id}`);
+    console.log(`   technicianType: ${technicianType}, status: ${status}`);
+
     const update = {};
     if (status) update.status = status;
-    if (technicianType) update.technicianType = technicianType;
+    if (technicianType) update.technicianType = technicianType.toLowerCase(); // ✅ Store in lowercase
     if (risk) update.risk = risk;
     if (analysisNotes) update.analysisNotes = analysisNotes;
 
     // If assigning, find a technician of that type and set assignedTechnician
     if (status === 'assigned' && technicianType) {
-      const technician = await User.findOne({ role: 'technician', technicianType });
-      if (technician) update.assignedTechnician = technician._id;
+      const techType = technicianType.toLowerCase();
+      console.log(`   finding technician with type: ${techType}`);
+      
+      const technician = await User.findOne({ 
+        role: 'technician', 
+        technicianType: { $regex: `^${techType}$`, $options: 'i' }
+      });
+      
+      if (technician) {
+        console.log(`   ✅ found technician: ${technician.username} (${technician._id})`);
+        update.assignedTechnician = technician._id;
+      } else {
+        console.log(`   ❌ no technician found with type: ${techType}`);
+      }
       update['timestamps.assigned'] = new Date();
     }
 
@@ -231,6 +270,8 @@ exports.updateIssueStatus = async (req, res) => {
       return res.status(404).json({ message: 'Issue not found' });
     }
 
+    console.log(`   ✅ issue updated: technicianType=${issue.technicianType}, status=${issue.status}, assignedTechnician=${issue.assignedTechnician?.username}`);
+
     // Add history entry
     issue.history = issue.history || [];
     issue.history.push({
@@ -242,6 +283,10 @@ exports.updateIssueStatus = async (req, res) => {
     });
 
     await issue.save();
+
+    if (process.env.DEBUG_ISSUE === 'true') {
+      console.debug('🔁 Issue status updated and history saved for:', issue._id);
+    }
 
     res.json(issue);
   } catch (error) {

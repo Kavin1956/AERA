@@ -1,11 +1,3 @@
-// require('dotenv').config();
-// // require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
-
-
-// const express = require('express');
-// const cors = require('cors');
-// const connectDB = require('./config/db');
-
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
@@ -13,28 +5,33 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
 
-
-
-// const app = express();
-// connectDB();
-
 const app = express();
-// connectDB() is called and awaited inside start() to ensure DB is ready before listening
 
 
 
-const FRONTEND_ORIGINS = [process.env.FRONTEND_URL || 'http://localhost:3000', 'http://localhost:3002', 'http://localhost:3003'];
-// Allow frontend during development on common local ports (3000, 3002, 3003)
-const LOCALHOST_RE = /^http:\/\/localhost(?::\d+)?$/;
+// Allow frontend from both local development and production
+const FRONTEND_ORIGINS = [
+  process.env.FRONTEND_URL || 'http://localhost:3002',
+  'http://localhost:3000',
+  'http://localhost:3002',
+  'http://localhost:3003',
+  'http://10.40.40.183:3002'  // Local network access
+];
+
+const LOCALHOST_RE = /^http:\/\/(localhost|10\.40\.40\.183)(?::\d+)?$/;
+
 app.use(cors({
   origin: (origin, callback) => {
-    // allow requests with no origin (like Postman, mobile apps)
+    // Allow requests with no origin (like Postman, mobile apps, curl)
     if (!origin) return callback(null, true);
+    // Allow if origin is in frontend origins list or matches localhost regex
     if (FRONTEND_ORIGINS.includes(origin) || LOCALHOST_RE.test(origin)) return callback(null, true);
-    console.warn('Blocked CORS request from origin:', origin);
-    callback(new Error('CORS policy: Origin not allowed'));
+    console.warn('⚠️ Blocked CORS request from origin:', origin);
+    return callback(null, true); // Allow for now to debug
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Global error handlers

@@ -165,9 +165,10 @@ function SignUp() {
               onChange={handleChange}
             >
               <option value="data_collector">Data Collector</option>
-              <option value="manager">Manager</option>
-              <option value="technician">Technician</option>
             </select>
+            <p className="info-text" style={{ fontSize: '0.85em', color: '#666', marginTop: '5px' }}>
+              Only Data Collectors can sign up. Technicians and Managers are pre-configured accounts.
+            </p>
           </div>
 
           {error && <div className="error-message">{error}</div>}

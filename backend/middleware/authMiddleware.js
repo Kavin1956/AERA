@@ -11,7 +11,11 @@ module.exports = (req, res, next) => {
 
   try {
     req.user = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('✅ Token verified. User:', req.user);
+    // Only log successful verification when debug mode is explicitly enabled
+    if (process.env.DEBUG_AUTH === 'true') {
+      console.debug('✅ Token verified. User:', req.user);
+    }
+
     next();
   } catch (error) {
     console.error('❌ Token verification failed:', error.message);

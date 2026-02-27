@@ -20,8 +20,8 @@ const seedUsers = async () => {
     console.log('✅ Connected to MongoDB');
 
     // Clear existing users (optional - comment out to preserve)
-    // await User.deleteMany({});
-    // console.log('🗑️  Cleared existing users');
+    await User.deleteMany({});
+    console.log('🗑️  Cleared existing users');
 
     // Hash passwords
     const hashPassword = async (pwd) => {
@@ -39,14 +39,14 @@ const seedUsers = async () => {
         role: 'manager'
       },
 
-      // 4 Technicians - by type
+      // 4 Technicians - by type (lowercase values)
       {
-        fullName: 'Bob Water Manager',
+        fullName: 'Bob Water Technician',
         email: 'tech_water@aera.edu',
         username: 'tech_water_bob',
         password: await hashPassword('waterpass123'),
         role: 'technician',
-        technicianType: 'Water Management'
+        technicianType: 'water'
       },
       {
         fullName: 'Charlie Electrician',
@@ -54,23 +54,23 @@ const seedUsers = async () => {
         username: 'tech_elec_charlie',
         password: await hashPassword('electpass123'),
         role: 'technician',
-        technicianType: 'Electricity'
+        technicianType: 'electricity'
       },
       {
-        fullName: 'Diana Cleaner',
+        fullName: 'Diana Cleaning Technician',
         email: 'tech_clean@aera.edu',
         username: 'tech_clean_diana',
         password: await hashPassword('cleanpass123'),
         role: 'technician',
-        technicianType: 'Cleaning'
+        technicianType: 'cleaning'
       },
       {
-        fullName: 'Evan General Tech',
+        fullName: 'Evan General Technician',
         email: 'tech_others@aera.edu',
         username: 'tech_others_evan',
         password: await hashPassword('otherspass123'),
         role: 'technician',
-        technicianType: 'Others'
+        technicianType: 'others'
       },
 
       // 3 Data Collectors

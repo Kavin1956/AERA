@@ -26,7 +26,7 @@ function Technician({ userName, onLogout }) {
         // The backend returns only tasks relevant to this technician (either assigned or matching technicianType)
         const assignedTasks = response.data || [];
 
-        console.log('📥 Technician tasks loaded:', assignedTasks.length);
+        if (process.env.REACT_APP_DEBUG === 'true') console.debug('📥 Technician tasks loaded:', assignedTasks.length);
         setTasks(assignedTasks);
         setError('');
       } catch (err) {
@@ -52,8 +52,7 @@ function Technician({ userName, onLogout }) {
     }
 
     try {
-      console.log('📤 Updating task status to:', updateProgress);
-      
+      if (process.env.REACT_APP_DEBUG === 'true') console.debug('📤 Updating task status to:', updateProgress);
       // Map front-end status to backend status
       // const statusMap = {
       //   'in_progress': 'in_progress',

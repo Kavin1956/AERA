@@ -1,64 +1,3 @@
-// // const router = require('express').Router();
-// // const auth = require('../middleware/authMiddleware');
-// // const role = require('../middleware/roleMiddleware');
-// // const issueCtrl = require('../controllers/issueController');
-
-// // // Anyone authenticated can submit an issue (data collectors, managers, technicians can all report)
-// // router.post('/', auth, issueCtrl.createIssue);
-
-// // // Only managers can view all issues
-// // 	// Allow any authenticated user to view all issues
-// // 	router.get('/', auth, issueCtrl.getAllIssues);
-
-// // // Only managers can assign issues
-// // router.put('/:id/assign', auth, role('manager'), issueCtrl.assignIssue);
-
-// // // Only technicians can complete issues
-// // router.put('/:id/complete', auth, role('technician'), issueCtrl.completeIssue);
-
-// // module.exports = router;
-
-// const express = require('express');
-// const router = express.Router();
-
-// const auth = require('../middleware/authMiddleware');
-// const role = require('../middleware/roleMiddleware');
-// const issueController = require('../controllers/issueController');
-
-// // Create issue (Data Collector)
-// router.post(
-//   '/',
-//   auth,
-//   role('data_collector'),
-//   issueController.createIssue
-// );
-
-// // Get issues (Manager / Technician / Data Collector)
-// router.get(
-//   '/',
-//   auth,
-//   issueController.getAllIssues
-// );
-
-// // Assign issue (Manager)
-// router.put(
-//   '/:id/assign',
-//   auth,
-//   role('manager'),
-//   issueController.assignIssue
-// );
-
-// // Complete issue (Technician)
-// router.put(
-//   '/:id/complete',
-//   auth,
-//   role('technician'),
-//   issueController.completeIssue
-// );
-
-// module.exports = router;
-
-
 const express = require('express');
 const router = express.Router();
 
@@ -66,7 +5,7 @@ const auth = require('../middleware/authMiddleware');
 const role = require('../middleware/roleMiddleware');
 const issueController = require('../controllers/issueController');
 
-// Create issue (Data Collector)
+// Create issue (Data Collector only)
 router.post(
   '/',
   auth,
@@ -74,14 +13,14 @@ router.post(
   issueController.createIssue
 );
 
-// Get issues (Manager / Technician / Data Collector)
+// Get issues (All authenticated users - filtering done in controller)
 router.get(
   '/',
   auth,
   issueController.getAllIssues
 );
 
-// Assign issue (Manager)
+// Assign issue (Manager only)
 router.put(
   '/:id/assign',
   auth,
@@ -89,7 +28,7 @@ router.put(
   issueController.assignIssue
 );
 
-// Update issue status / manager analysis (Manager)
+// Update issue status / manager analysis (Manager only)
 router.put(
   '/:id/status',
   auth,
@@ -97,11 +36,23 @@ router.put(
   issueController.updateIssueStatus
 );
 
-// Complete issue (Technician)
+// Complete issue (Technician or Manager can mark as complete)
+const allowTechnicianOrManager = (req, res, next) => {
+  const userRole = req.user?.role;
+  if (userRole !== 'technician' && userRole !== 'manager') {
+    console.error(`❌ Access denied: ${userRole} !== technician or manager`);
+    return res.status(403).json({ 
+      message: 'Access denied',
+      details: `Your role '${userRole}' is not authorized for this action. Required: 'technician' or 'manager'`
+    });
+  }
+  next();
+};
+
 router.put(
   '/:id/complete',
   auth,
-  role('technician'),
+  allowTechnicianOrManager,
   issueController.completeIssue
 );
 

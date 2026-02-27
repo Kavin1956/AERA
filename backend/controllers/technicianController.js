@@ -5,19 +5,39 @@ const Issue = require('../models/issue');
 exports.getAssignedTasks = async (req, res) => {
   try {
     const userId = req.user.id;
-    const technicianType = req.user.technicianType;
+    const technicianType = req.user.technicianType?.toLowerCase();
 
-    const tasks = await Issue.find({
-      $or: [
-        { assignedTechnician: userId },
-        { technicianType: technicianType, status: { $in: ['assigned', 'in_progress'] } }
-      ]
-    })
+    console.log(`\n📋 getAssignedTasks for technician: ${req.user.username}`);
+    console.log(`   technicianType: ${technicianType}`);
+    console.log(`   userId: ${userId}`);
+
+    let filter;
+    if (technicianType) {
+      filter = {
+        $or: [
+          { assignedTechnician: userId },
+          { technicianType: { $regex: `^${technicianType}$`, $options: 'i' }, status: { $in: ['submitted', 'assigned', 'in_progress', 'completed'] } }
+        ]
+      };
+    } else {
+      // If technician has no type, only show assigned to them
+      filter = { assignedTechnician: userId };
+    }
+
+    console.log(`   filter: ${JSON.stringify(filter)}`);
+
+    const tasks = await Issue.find(filter)
       .populate('submittedBy', 'username fullName')
       .populate('assignedTechnician', 'username fullName technicianType');
 
+    console.log(`   found ${tasks.length} tasks`);
+    tasks.forEach((task, idx) => {
+      console.log(`   [${idx}] issue ${task._id}, technicianType: ${task.technicianType}, status: ${task.status}, assigned: ${task.assignedTechnician?._id}`);
+    });
+
     res.json(tasks);
   } catch (error) {
+    console.error('❌ getAssignedTasks error:', error);
     res.status(500).json({ message: error.message });
   }
 };

@@ -1,17 +1,22 @@
-module.exports = (role) => {
+module.exports = (requiredRoles) => {
   return (req, res, next) => {
     const userRole = req.user?.role;
-    console.log(`🔐 Role check: User role = '${userRole}', Required role = '${role}'`);
-    
-    if (userRole !== role) {
-      console.error(`❌ Access denied: ${userRole} !== ${role}`);
-      return res.status(403).json({ 
-        message: 'Access denied',
-        details: `Your role '${userRole}' is not authorized for this action. Required: '${role}'`
-      });
+
+    if (!userRole) {
+      return res.status(401).json({ message: 'User role not found in token' });
     }
-    
-    console.log(`✅ Role authorized: ${userRole}`);
+
+    // Allow if user's role matches any of the required roles
+    if (Array.isArray(requiredRoles)) {
+      if (!requiredRoles.includes(userRole)) {
+        return res.status(403).json({ message: `Access denied: This action requires one of these roles: ${requiredRoles.join(', ')}` });
+      }
+    } else {
+      if (userRole !== requiredRoles) {
+        return res.status(403).json({ message: `Access denied: This action requires ${requiredRoles} role` });
+      }
+    }
+
     next();
   };
 };

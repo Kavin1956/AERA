@@ -15,6 +15,7 @@ function App() {
 
   // Ensure we don't keep an authenticated flag without token
   useEffect(() => {
+    // Re-run this check whenever `isAuthenticated` changes so UI and localStorage stay in sync.
     const token = localStorage.getItem('token');
     if (!token && isAuthenticated) {
       // token missing -> clear auth
@@ -24,6 +25,15 @@ function App() {
       localStorage.removeItem('isAuthenticated');
       localStorage.removeItem('userRole');
       localStorage.removeItem('userName');
+      localStorage.removeItem('token');
+    }
+  }, [isAuthenticated]);
+
+  // Safety: remove any leftover client-side "issues" cache so data is persisted only to the server
+  useEffect(() => {
+    if (localStorage.getItem('issues')) {
+      console.warn('Removing stale localStorage key: issues — using server persistence only');
+      localStorage.removeItem('issues');
     }
   }, []);
 
