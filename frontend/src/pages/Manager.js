@@ -188,21 +188,6 @@ function Manager({ userName, onLogout }) {
     }
   };
 
-  const sendWarningAlert = async (issueId) => {
-    try {
-      setIssues(issues.map(i =>
-        i._id === issueId ? { 
-          ...i, 
-          alerts: [...(i.alerts || []), 'warning'],
-          warningAlert: true
-        } : i
-      ));
-      alert('Warning alert sent to technician!');
-    } catch (err) {
-      console.error('Send warning error:', err);
-    }
-  };
-
   const getFilteredIssues = () => {
     let filtered = issues.filter(i => i.status !== 'completed');
     
