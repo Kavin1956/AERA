@@ -15,6 +15,7 @@ function Manager({ userName, onLogout }) {
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [newIssueAlert, setNewIssueAlert] = useState(''); // To show notification of new issue
 
   const [selectedIssue, setSelectedIssue] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -24,44 +25,126 @@ function Manager({ userName, onLogout }) {
   const [analysisNotes, setAnalysisNotes] = useState('');
   const [activeTab, setActiveTab] = useState('current');
   const [analyticsData, setAnalyticsData] = useState({});
+  const [previousIssueCount, setPreviousIssueCount] = useState(0); // Track previous count to detect new issues
 
   // Fetch issues from backend on mount and auto-refresh every 5 seconds
   useEffect(() => {
     const fetchIssues = async () => {
       try {
+        // Verify token is still valid
+        const token = sessionStorage.getItem('token');
+        const userRole = sessionStorage.getItem('userRole');
+        
+        console.debug('🔍 Manager fetch check:', { token: !!token, userRole, hasToken: !!token });
+        
+        if (!token || userRole !== 'manager') {
+          console.error('❌ Session validation failed:', { token: !!token, userRole });
+          setError('Session expired or invalid role. Please login again.');
+          setLoading(false);
+          return;
+        }
+
         const response = await issueAPI.getAllIssues();
         if (process.env.REACT_APP_DEBUG === 'true') console.debug('📥 Issues loaded in Manager:', response.data?.length, 'issues');
         setIssues(response.data || []);
         setError('');
+        
+        // Detect new issues
+        const currentCount = (response.data || []).length;
+        if (currentCount > previousIssueCount && previousIssueCount > 0) {
+          const newCount = currentCount - previousIssueCount;
+          setNewIssueAlert(`✨ ${newCount} new issue(s) submitted!`);
+          // Clear notification after 5 seconds
+          setTimeout(() => setNewIssueAlert(''), 5000);
+        }
+        setPreviousIssueCount(currentCount);
       } catch (err) {
         console.error('❌ Fetch issues error:', err.response?.data || err.message);
-        // Keep existing issues even on error for better UX
-        if ((issues || []).length === 0) {
+        
+        // Handle 401 Unauthorized
+        if (err.response?.status === 401) {
+          console.error('🔒 Unauthorized - clearing session');
+          setError('Session expired. Please login again.');
+          sessionStorage.clear();
+          return;
+        }
+        
+        if (!loading) {
           setError('Failed to load issues');
         }
-        // setIssues([]); // Don't clear on error
       } finally {
         setLoading(false);
       }
     };
 
-    // Initial fetch with small delay
-    const initialTimer = setTimeout(() => {
-      fetchIssues();
-    }, 100);
+    // Initial fetch immediately
+    fetchIssues();
     
-    // Refresh every 5 seconds to show new submissions from Data Collectors (reduced from 3 for performance)
+    // Refresh every 5 seconds to show new submissions from Data Collectors
     const interval = setInterval(fetchIssues, 5000);
     
     return () => {
-      clearTimeout(initialTimer);
       clearInterval(interval);
     };
-  }, [issues]);
+  }, []); // Empty dependency - run only on mount
+
+  // Handle page visibility - refresh when tab becomes active
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // Page is now visible, refresh issues immediately
+        console.log('📱 Page became visible, fetching fresh issues...');
+        setLoading(true);
+        // Directly fetch instead of relying on dependency to trigger
+        const token = sessionStorage.getItem('token');
+        const userRole = sessionStorage.getItem('userRole');
+        
+        if (token && userRole === 'manager') {
+          issueAPI.getAllIssues()
+            .then(response => {
+              setIssues(response.data || []);
+              setError('');
+            })
+            .catch(err => {
+              console.error('❌ Fetch on visibility change error:', err);
+              if (err.response?.status === 401) {
+                setError('Session expired. Please login again.');
+                sessionStorage.clear();
+              } else {
+                setError('Failed to load issues');
+              }
+            })
+            .finally(() => setLoading(false));
+        } else {
+          console.warn('⚠️ No valid session when tab became visible');
+          setError('Session expired or invalid role. Please login again.');
+          setLoading(false);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // Handle storage changes (logout from other tab)
+  // Removed: sessionStorage is tab-specific, so we don't need cross-tab logout detection
+  // Each tab manages its own session independently
 
   // Get display name for technician type
   const getTechnicianTypeDisplay = (techType) => {
     return TECHNICIAN_TYPES[techType] || techType;
+  };
+
+  // Check if an issue is newly submitted (within last 2 minutes)
+  const isNewIssue = (issue) => {
+    if (!issue.timestamps?.submitted) return false;
+    const submittedTime = new Date(issue.timestamps.submitted);
+    const now = new Date();
+    const minutesAgo = (now - submittedTime) / (1000 * 60);
+    return minutesAgo < 2; // Highlight as "new" if submitted within 2 minutes
   };
 
   // Auto-check for alerts every minute
@@ -235,6 +318,7 @@ function Manager({ userName, onLogout }) {
         <div className="manager-content">
           {loading && <div className="loading-spinner">Loading issues...</div>}
           {error && <div className="error-message">{error}</div>}
+          {newIssueAlert && <div className="success-message" style={{ animation: 'slideDown 0.3s ease-in-out' }}>{newIssueAlert}</div>}
           
           <div className="dashboard-stats">
             <div className="stat-card">
@@ -353,7 +437,7 @@ function Manager({ userName, onLogout }) {
                     </thead>
                     <tbody>
                       {currentTabIssues?.map((issue, index) => (
-                        <tr key={issue._id} className={`issue-row status-${issue.status} ${issue.responseAlert ? 'alert-response' : ''} ${issue.solveAlert ? 'alert-solve' : ''}`}>
+                        <tr key={issue._id} className={`issue-row status-${issue.status} ${issue.responseAlert ? 'alert-response' : ''} ${issue.solveAlert ? 'alert-solve' : ''} ${isNewIssue(issue) ? 'new-issue-highlight' : ''}`}>
                           <td>IS{index + 1}</td>
                           <td>
                             Block {issue.block}, Floor {issue.floor}, Room {issue.roomNumber}
@@ -374,6 +458,7 @@ function Manager({ userName, onLogout }) {
                             </span>
                             {issue.responseAlert && <span className="alert-badge">⚠️ No Response</span>}
                             {issue.solveAlert && <span className="alert-badge solve">🚨 Not Solved</span>}
+                            {isNewIssue(issue) && <span className="alert-badge" style={{ backgroundColor: '#10b981' }}>✨ JUST SUBMITTED</span>}
                           </td>
                           <td>{new Date(issue.timestamps?.submitted).toLocaleString()}</td>
                           <td>
@@ -515,7 +600,49 @@ function Manager({ userName, onLogout }) {
                 <div className="detail-section">
                   <h4>Issue Details</h4>
                   <p><strong>Overall Condition:</strong> {selectedIssue.condition || 'Not assessed'}</p>
-                  <p><strong>Issue:</strong> {selectedIssue.otherSuggestions || 'No additional details'}</p>
+                  
+                  {/* Display specific problems from the issue data */}
+                  <p><strong>Specific Issues Found:</strong></p>
+                  {selectedIssue.data ? (
+                    <div style={{ marginLeft: '20px' }}>
+                      {(() => {
+                        const problems = [];
+                        const data = selectedIssue.data;
+                        
+                        // Check for not working items
+                        if (data.projector === 'Not Working') problems.push('📽️ Projector not working');
+                        if (data.ac === 'Not Working') problems.push('❄️ AC not working');
+                        if (data.ac === 'Partially Working') problems.push('❄️ AC partially working');
+                        if (data.whiteboard === 'Poor') problems.push('📝 Whiteboard in poor condition');
+                        if (data.lights === 'Not Working') problems.push('💡 Lights not working');
+                        if (data.lights === 'Partial') problems.push('💡 Lights partially working');
+                        if (data.fans === 'Not Working') problems.push('🌀 Fans not working');
+                        if (data.fans === 'Partial') problems.push('🌀 Fans partially working');
+                        if (data.powerSupply === 'Fluctuating') problems.push('⚡ Power supply fluctuating');
+                        if (data.powerSupply === 'Frequent Outages') problems.push('⚡ Frequent power outages');
+                        if (data.systemPc === 'Not Working') problems.push('💻 System/PC not working');
+                        if (data.systemPc === 'Not Available') problems.push('💻 System/PC not available');
+                        if (data.junctionBox === 'Needs Attention') problems.push('⚠️ Junction box needs attention');
+                        if (data.junctionBox === 'Unsafe') problems.push('🚨 Junction box unsafe');
+                        if (data.seatsAvailability && data.seatsAvailability < 10) problems.push(`📺 Limited seats: ${data.seatsAvailability} available`);
+                        if (data.mikeCondition === 'Needs Repair') problems.push('🎤 Mike/Speaker needs repair');
+                        if (data.mikeCondition === 'Not Available') problems.push('🎤 Mike/Speaker not available');
+                        if (data.whiteboards === 'Fair') problems.push('📝 Whiteboards in fair condition');
+                        if (data.whiteboards === 'Poor') problems.push('📝 Whiteboards in poor condition');
+                        if (data.temperature && data.temperature > 30) problems.push(`🌡️ High temperature: ${data.temperature}°C`);
+                        
+                        if (problems.length > 0) {
+                          return problems.map((p, i) => <p key={i} style={{ margin: '5px 0' }}>{p}</p>);
+                        } else {
+                          return <p style={{ margin: '5px 0', color: '#666' }}>No specific problems reported - all systems functioning normally</p>;
+                        }
+                      })()}
+                    </div>
+                  ) : (
+                    <p style={{ marginLeft: '20px' }}>No additional details</p>
+                  )}
+                  
+                  <p style={{ marginTop: '0.75rem' }}><strong>Priority:</strong> P{selectedIssue.priority}</p>
                 </div>
               </div>
 

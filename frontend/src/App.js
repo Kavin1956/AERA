@@ -8,24 +8,23 @@ import Technician from './pages/Technician';
 import './styles/App.css';
 
 function App() {
-  // Attempt to restore session from localStorage so page refresh doesn't log users out
-  const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('isAuthenticated') === 'true');
-  const [userRole, setUserRole] = useState(() => localStorage.getItem('userRole') || null);
+  // Attempt to restore session from sessionStorage (tab-specific) and localStorage
+  const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem('token') ? true : false);
+  const [userRole, setUserRole] = useState(() => sessionStorage.getItem('userRole') || null);
   const [userName, setUserName] = useState(() => localStorage.getItem('userName') || null);
 
   // Ensure we don't keep an authenticated flag without token
   useEffect(() => {
-    // Re-run this check whenever `isAuthenticated` changes so UI and localStorage stay in sync.
-    const token = localStorage.getItem('token');
+    // Re-run this check whenever `isAuthenticated` changes so UI and sessionStorage stay in sync.
+    const token = sessionStorage.getItem('token');
     if (!token && isAuthenticated) {
       // token missing -> clear auth
       setIsAuthenticated(false);
       setUserRole(null);
       setUserName(null);
       localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('userName');
-      localStorage.removeItem('token');
+      sessionStorage.removeItem('userRole');
+      sessionStorage.removeItem('token');
     }
   }, [isAuthenticated]);
 
@@ -41,9 +40,9 @@ function App() {
     setIsAuthenticated(true);
     setUserRole(role);
     setUserName(username);
-    // Persist session so refresh keeps the user logged in
+    // Persist session - use sessionStorage for token/role (tab-specific), localStorage for userName
     localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userRole', role);
+    sessionStorage.setItem('userRole', role);
     localStorage.setItem('userName', username);
   };
 
@@ -52,9 +51,8 @@ function App() {
     setUserRole(null);
     setUserName(null);
     localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('token');
+    sessionStorage.removeItem('userRole');
+    sessionStorage.removeItem('token');
   };
 
   return (

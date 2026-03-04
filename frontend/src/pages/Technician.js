@@ -304,13 +304,50 @@ function Technician({ userName, onLogout }) {
 
                 <div className="detail-section">
                   <h4>Issue Details</h4>
-                  <p><strong>Condition:</strong> {selectedTask.condition}</p>
-                  <p><strong>Problem Level:</strong> {selectedTask.problemLevel || selectedTask.data?.problemLevel}</p>
-                  <p><strong>Tech Type Needed:</strong> {selectedTask.technicianType || 'General'}</p>
-                  <p><strong>Priority:</strong> {selectedTask.priority}</p>
-                  {selectedTask.data?.otherSuggestions && (
-                    <p><strong>Additional Notes:</strong> {selectedTask.data.otherSuggestions}</p>
+                  <p><strong>Overall Condition:</strong> {selectedTask.condition}</p>
+                  
+                  {/* Specific Issues Found */}
+                  <p><strong>Specific Issues Found:</strong></p>
+                  {selectedTask.data ? (
+                    <div style={{ marginLeft: '20px' }}>
+                      {(() => {
+                        const problems = [];
+                        const data = selectedTask.data;
+                        
+                        // Check for not working items
+                        if (data.projector === 'Not Working') problems.push('📽️ Projector not working');
+                        if (data.ac === 'Not Working') problems.push('❄️ AC not working');
+                        if (data.ac === 'Partially Working') problems.push('❄️ AC partially working');
+                        if (data.whiteboard === 'Poor') problems.push('📝 Whiteboard in poor condition');
+                        if (data.lights === 'Not Working') problems.push('💡 Lights not working');
+                        if (data.lights === 'Partial') problems.push('💡 Lights partially working');
+                        if (data.fans === 'Not Working') problems.push('🌀 Fans not working');
+                        if (data.fans === 'Partial') problems.push('🌀 Fans partially working');
+                        if (data.powerSupply === 'Fluctuating') problems.push('⚡ Power supply fluctuating');
+                        if (data.powerSupply === 'Frequent Outages') problems.push('⚡ Frequent power outages');
+                        if (data.systemPc === 'Not Working') problems.push('💻 System/PC not working');
+                        if (data.systemPc === 'Not Available') problems.push('💻 System/PC not available');
+                        if (data.junctionBox === 'Needs Attention') problems.push('⚠️ Junction box needs attention');
+                        if (data.junctionBox === 'Unsafe') problems.push('🚨 Junction box unsafe');
+                        if (data.seatsAvailability && data.seatsAvailability < 10) problems.push(`📺 Limited seats: ${data.seatsAvailability} available`);
+                        if (data.mikeCondition === 'Needs Repair') problems.push('🎤 Mike/Speaker needs repair');
+                        if (data.mikeCondition === 'Not Available') problems.push('🎤 Mike/Speaker not available');
+                        if (data.whiteboards === 'Fair') problems.push('📝 Whiteboards in fair condition');
+                        if (data.whiteboards === 'Poor') problems.push('📝 Whiteboards in poor condition');
+                        if (data.temperature && data.temperature > 30) problems.push(`🌡️ High temperature: ${data.temperature}°C`);
+                        
+                        if (problems.length > 0) {
+                          return problems.map((p, i) => <p key={i} style={{ margin: '5px 0' }}>{p}</p>);
+                        } else {
+                          return <p style={{ margin: '5px 0', color: '#666' }}>No specific problems reported - all systems functioning normally</p>;
+                        }
+                      })()}
+                    </div>
+                  ) : (
+                    <p style={{ marginLeft: '20px' }}>No additional details</p>
                   )}
+                  
+                  <p style={{ marginTop: '0.75rem' }}><strong>Priority:</strong> {selectedTask.priority}</p>
                 </div>
 
                 <div className="detail-section">

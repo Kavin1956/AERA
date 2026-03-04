@@ -5,11 +5,11 @@ const auth = require('../middleware/authMiddleware');
 const role = require('../middleware/roleMiddleware');
 const issueController = require('../controllers/issueController');
 
-// Create issue (Data Collector only)
+// Create issue (Data Collector or Manager)
 router.post(
   '/',
   auth,
-  role('data_collector'),
+  role(['data_collector', 'manager']),
   issueController.createIssue
 );
 

@@ -81,8 +81,8 @@ function DataCollector({ userName, onLogout }) {
   };
 
   const validateStep2 = () => {
-    if (!formData.name) {
-      setError('Name is required');
+    if (!formData.name || !formData.email) {
+      setError('Name and email are required');
       return false;
     }
 
@@ -201,11 +201,11 @@ function DataCollector({ userName, onLogout }) {
   const handleSubmit = async () => {
     if (!validateStep4()) return;
 
-    // Check if user is actually a data_collector
-    const userRole = localStorage.getItem('userRole');
-    if (userRole !== 'data_collector') {
-      setError(`❌ Access denied: Only data collectors can submit issues. Your role is: ${userRole || 'unknown'}`);
-      alert(`Error: Only data collectors can submit issues.\nYour current role: ${userRole || 'unknown'}\n\nPlease logout and login as a Data Collector.`);
+    // Check if user is actually a data_collector or manager (both can submit)
+    const userRole = sessionStorage.getItem('userRole');
+    if (userRole !== 'data_collector' && userRole !== 'manager') {
+      setError(`❌ Access denied: Only data collectors and managers can submit issues. Your role is: ${userRole || 'unknown'}`);
+      alert(`Error: Only data collectors and managers can submit issues.\nYour current role: ${userRole || 'unknown'}\n\nPlease logout and login as a Data Collector or Manager.`);
       return;
     }
 
@@ -218,8 +218,8 @@ function DataCollector({ userName, onLogout }) {
     try {
       if (process.env.REACT_APP_DEBUG === 'true') {
         console.debug('\n📤 Submitting Issue:');
-        console.debug('Token:', localStorage.getItem('token')?.substring(0, 30) + '...');
-        console.debug('User Role:', localStorage.getItem('userRole'));
+        console.debug('Token:', sessionStorage.getItem('token')?.substring(0, 30) + '...');
+        console.debug('User Role:', sessionStorage.getItem('userRole'));
         console.debug('User Name:', localStorage.getItem('userName'));
         console.debug('Issue Data:', {
           userType,
@@ -370,6 +370,19 @@ function DataCollector({ userName, onLogout }) {
                       value={formData.name || ''}
                       onChange={handleChange}
                       placeholder="Enter your full name"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="email" className="form-label">Email *</label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      className="form-input"
+                      value={formData.email || ''}
+                      onChange={handleChange}
+                      placeholder="Enter your email address"
                     />
                   </div>
 
@@ -945,6 +958,49 @@ function DataCollector({ userName, onLogout }) {
                     <p className="issue-info">
                       <strong>Condition:</strong> {issue.condition}
                     </p>
+                    
+                    {/* Specific Issues Found */}
+                    <p className="issue-info">
+                      <strong>Specific Issues Found:</strong>
+                    </p>
+                    {issue.data ? (
+                      <div style={{ marginLeft: '10px', fontSize: '0.9rem' }}>
+                        {(() => {
+                          const problems = [];
+                          const data = issue.data;
+                          
+                          // Check for not working items
+                          if (data.projector === 'Not Working') problems.push('📽️ Projector not working');
+                          if (data.ac === 'Not Working') problems.push('❄️ AC not working');
+                          if (data.ac === 'Partially Working') problems.push('❄️ AC partially working');
+                          if (data.whiteboard === 'Poor') problems.push('📝 Whiteboard in poor condition');
+                          if (data.lights === 'Not Working') problems.push('💡 Lights not working');
+                          if (data.lights === 'Partial') problems.push('💡 Lights partially working');
+                          if (data.fans === 'Not Working') problems.push('🌀 Fans not working');
+                          if (data.fans === 'Partial') problems.push('🌀 Fans partially working');
+                          if (data.powerSupply === 'Fluctuating') problems.push('⚡ Power supply fluctuating');
+                          if (data.powerSupply === 'Frequent Outages') problems.push('⚡ Frequent power outages');
+                          if (data.systemPc === 'Not Working') problems.push('💻 System/PC not working');
+                          if (data.systemPc === 'Not Available') problems.push('💻 System/PC not available');
+                          if (data.junctionBox === 'Needs Attention') problems.push('⚠️ Junction box needs attention');
+                          if (data.junctionBox === 'Unsafe') problems.push('🚨 Junction box unsafe');
+                          if (data.seatsAvailability && data.seatsAvailability < 10) problems.push(`📺 Limited seats: ${data.seatsAvailability} available`);
+                          if (data.mikeCondition === 'Needs Repair') problems.push('🎤 Mike/Speaker needs repair');
+                          if (data.mikeCondition === 'Not Available') problems.push('🎤 Mike/Speaker not available');
+                          if (data.whiteboards === 'Fair') problems.push('📝 Whiteboards in fair condition');
+                          if (data.whiteboards === 'Poor') problems.push('📝 Whiteboards in poor condition');
+                          if (data.temperature && data.temperature > 30) problems.push(`🌡️ High temperature: ${data.temperature}°C`);
+                          
+                          if (problems.length > 0) {
+                            return problems.map((p, i) => <p key={i} style={{ margin: '3px 0', color: '#e74c3c' }}>{p}</p>);
+                          } else {
+                            return <p style={{ margin: '3px 0', color: '#27ae60' }}>✓ No issues - all systems normal</p>;
+                          }
+                        })()}
+                      </div>
+                    ) : (
+                      <p style={{ marginLeft: '10px', fontSize: '0.85rem', color: '#7f8c8d' }}>No issues recorded</p>
+                    )}
                   </div>
                 ))}
               </div>
