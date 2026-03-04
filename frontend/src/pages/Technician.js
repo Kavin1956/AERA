@@ -17,7 +17,7 @@ function Technician({ userName, onLogout }) {
   const [updateProgress, setUpdateProgress] = useState('in_progress');
   const [filterStatus, setFilterStatus] = useState('assigned');
 
-  // Fetch assigned tasks from backend and auto-refresh every 3 seconds
+  // Fetch assigned tasks from backend and auto-refresh every 5 seconds (reduced from 3 for performance)
   useEffect(() => {
     const fetchTasks = async () => {
       try {
@@ -31,19 +31,28 @@ function Technician({ userName, onLogout }) {
         setError('');
       } catch (err) {
         console.error('❌ Fetch tasks error:', err.response?.data || err.message);
-        setError('Failed to load tasks');
-        setTasks([]);
+        // Keep existing tasks even if fetch fails, for better UX
+        if (tasks.length === 0) {
+          setError('Failed to load tasks - will retry');
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    fetchTasks();
+    // Initial fetch with a small delay to allow login transition to complete
+    const initialTimer = setTimeout(() => {
+      fetchTasks();
+    }, 100);
     
-    // Refresh every 3 seconds to see new assignments
-    const interval = setInterval(fetchTasks, 3000);
-    return () => clearInterval(interval);
-  }, []);
+    // Refresh every 5 seconds to see new assignments (reduced frequency for better performance)
+    const interval = setInterval(fetchTasks, 5000);
+    
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
+  }, [tasks.length]);
 
   const handleUpdateTask = async (taskId) => {
     if (!updateNotes.trim()) {

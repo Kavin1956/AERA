@@ -8,32 +8,41 @@ exports.getAssignedTasks = async (req, res) => {
     const technicianType = req.user.technicianType?.toLowerCase();
 
     console.log(`\n📋 getAssignedTasks for technician: ${req.user.username}`);
-    console.log(`   technicianType: ${technicianType}`);
     console.log(`   userId: ${userId}`);
+    console.log(`   technicianType: ${technicianType}`);
 
     let filter;
     if (technicianType) {
+      // Create both lowercase and original case versions for flexible matching
       filter = {
         $or: [
           { assignedTechnician: userId },
-          { technicianType: { $regex: `^${technicianType}$`, $options: 'i' }, status: { $in: ['submitted', 'assigned', 'in_progress', 'completed'] } }
+          { 
+            $and: [
+              { technicianType: { $regex: `^${technicianType}$`, $options: 'i' } },
+              { status: { $in: ['submitted', 'assigned', 'in_progress', 'completed'] } }
+            ]
+          }
         ]
       };
+      console.log(`   Looking for: technician type="${technicianType}" or assignedTechnician="${userId}"`);
     } else {
       // If technician has no type, only show assigned to them
       filter = { assignedTechnician: userId };
+      console.log(`   No technicianType - showing only directly assigned issues`);
     }
-
-    console.log(`   filter: ${JSON.stringify(filter)}`);
 
     const tasks = await Issue.find(filter)
       .populate('submittedBy', 'username fullName')
       .populate('assignedTechnician', 'username fullName technicianType');
 
-    console.log(`   found ${tasks.length} tasks`);
-    tasks.forEach((task, idx) => {
-      console.log(`   [${idx}] issue ${task._id}, technicianType: ${task.technicianType}, status: ${task.status}, assigned: ${task.assignedTechnician?._id}`);
-    });
+    console.log(`   ✅ Found ${tasks.length} matching tasks`);
+    
+    if (process.env.DEBUG_ISSUE === 'true' || process.env.DEBUG === 'true') {
+      tasks.forEach((task, idx) => {
+        console.log(`   [${idx}] ID: ${task._id}, techType: "${task.technicianType}", status: "${task.status}", assigned: ${task.assignedTechnician?.username || 'unassigned'}`);
+      });
+    }
 
     res.json(tasks);
   } catch (error) {

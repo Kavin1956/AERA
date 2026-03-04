@@ -124,6 +124,9 @@ exports.login = async (req, res) => {
 
     // 🔑 FIND USER ONLY BY USERNAME
     const user = await User.findOne({ username });
+    console.log(`[LOGIN] Username: ${username}`);
+    console.log(`[LOGIN] User found:`, user ? `${user.username} (${user.role})` : 'NOT FOUND');
+    
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -143,6 +146,7 @@ exports.login = async (req, res) => {
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log(`[LOGIN] Password check for ${username}: ${isMatch ? 'MATCH' : 'MISMATCH'}`);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid password' });
     }
@@ -275,5 +279,75 @@ exports.seedAccounts = async (req, res) => {
   } catch (error) {
     console.error('❌ Seed error:', error);
     res.status(500).json({ message: 'Error seeding accounts', error: error.message });
+  }
+};
+
+// ================= FIX TECHNICIAN TYPES =================
+exports.fixTechnicians = async (req, res) => {
+  try {
+    console.log('\n🔧 fixTechnicians endpoint called');
+
+    // Define correct technician types
+    const TECHNICIAN_MAPPING = {
+      'tech_water_bob': 'water',
+      'tech_elec_charlie': 'electricity',
+      'tech_clean_diana': 'cleaning',
+      'tech_others_evan': 'others'
+    };
+
+    // Find technicians with undefined technicianType
+    const undefinedTechs = await User.find({ 
+      role: 'technician',
+      $or: [
+        { technicianType: undefined },
+        { technicianType: null },
+        { technicianType: '' }
+      ]
+    });
+
+    console.log(`   Found ${undefinedTechs.length} technician(s) to fix`);
+
+    let fixed = [];
+    let skipped = [];
+
+    // Fix each technician
+    for (const tech of undefinedTechs) {
+      const correctType = TECHNICIAN_MAPPING[tech.username];
+      
+      if (correctType) {
+        console.log(`   Fixing ${tech.username} → "${correctType}"`);
+        tech.technicianType = correctType;
+        await tech.save();
+        fixed.push({
+          username: tech.username,
+          newTechnicianType: correctType
+        });
+      } else {
+        console.log(`   Skipping ${tech.username} - not in standard mapping`);
+        skipped.push(tech.username);
+      }
+    }
+
+    // Verify all technicians now have type
+    const allTechs = await User.find({ role: 'technician' });
+    const verification = allTechs.map(tech => ({
+      username: tech.username,
+      technicianType: tech.technicianType || '(undefined)',
+      hasType: !!(tech.technicianType && tech.technicianType.trim())
+    }));
+
+    console.log(`   ✅ Fix complete: ${fixed.length} fixed, ${skipped.length} skipped`);
+
+    res.json({
+      message: 'Technician fix completed',
+      fixed: fixed.length,
+      skipped: skipped.length,
+      fixedList: fixed,
+      skippedList: skipped,
+      allTechnicians: verification
+    });
+  } catch (error) {
+    console.error('❌ fixTechnicians error:', error);
+    res.status(500).json({ message: 'Error fixing technicians', error: error.message });
   }
 };

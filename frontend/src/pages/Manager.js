@@ -25,7 +25,7 @@ function Manager({ userName, onLogout }) {
   const [activeTab, setActiveTab] = useState('current');
   const [analyticsData, setAnalyticsData] = useState({});
 
-  // Fetch issues from backend on mount and auto-refresh every 3 seconds
+  // Fetch issues from backend on mount and auto-refresh every 5 seconds
   useEffect(() => {
     const fetchIssues = async () => {
       try {
@@ -35,19 +35,29 @@ function Manager({ userName, onLogout }) {
         setError('');
       } catch (err) {
         console.error('❌ Fetch issues error:', err.response?.data || err.message);
-        setError('Failed to load issues');
-        setIssues([]);
+        // Keep existing issues even on error for better UX
+        if ((issues || []).length === 0) {
+          setError('Failed to load issues');
+        }
+        // setIssues([]); // Don't clear on error
       } finally {
         setLoading(false);
       }
     };
 
-    fetchIssues();
+    // Initial fetch with small delay
+    const initialTimer = setTimeout(() => {
+      fetchIssues();
+    }, 100);
     
-    // Refresh every 3 seconds to show new submissions from Data Collectors
-    const interval = setInterval(fetchIssues, 3000);
-    return () => clearInterval(interval);
-  }, []);
+    // Refresh every 5 seconds to show new submissions from Data Collectors (reduced from 3 for performance)
+    const interval = setInterval(fetchIssues, 5000);
+    
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
+  }, [issues]);
 
   // Get display name for technician type
   const getTechnicianTypeDisplay = (techType) => {

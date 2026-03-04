@@ -53,7 +53,7 @@ exports.getAllIssues = async (req, res) => {
             { technicianType: { $regex: `^${techType}$`, $options: 'i' } }
           ]
         };
-        console.log(`   technician: techType=${techType}, filter set`);
+        console.log(`   technician: techType=${techType}, filter set for both assigned and type-matching`);
       } else {
         // If technician has no type, only show assigned to them
         filter = { assignedTechnician: userId };
@@ -69,7 +69,13 @@ exports.getAllIssues = async (req, res) => {
       .populate('submittedBy', 'username fullName')
       .populate('assignedTechnician', 'username fullName technicianType');
     
-    console.log(`   found ${issues.length} issues`);
+    console.log(`   ✅ found ${issues.length} issues matching filter`);
+    
+    if (process.env.DEBUG_ISSUE === 'true') {
+      issues.forEach((issue, idx) => {
+        console.log(`   [${idx}] ID: ${issue._id}, status: "${issue.status}", techType: "${issue.technicianType}", assigned: ${issue.assignedTechnician?.username || 'none'}`);
+      });
+    }
     
     res.json(issues);
   } catch (error) {
@@ -148,21 +154,35 @@ exports.assignIssue = async (req, res) => {
       return res.status(400).json({ message: 'technicianType is required' });
     }
 
-    // Find technician by type (case-insensitive)
+    const techTypeNormalized = technicianType.toLowerCase().trim();
+    console.log(`\n📤 assignIssue: finding technician with type="${techTypeNormalized}"`);
+
+    // Find technician by type (case-insensitive, trim whitespace)
     const technician = await User.findOne({
       role: 'technician',
-      technicianType: { $regex: `^${technicianType.toLowerCase()}$`, $options: 'i' }
+      technicianType: { $regex: `^${techTypeNormalized}$`, $options: 'i' }
     });
 
     if (!technician) {
-      return res.status(404).json({ message: 'Technician not found' });
+      console.log(`   ❌ No technician found with type: ${techTypeNormalized}`);
+      
+      // Debug: Show all technicians and their types
+      const allTechs = await User.find({ role: 'technician' }).select('username technicianType');
+      console.log(`   Available technicians:`, allTechs.map(t => ({ username: t.username, type: t.technicianType })));
+      
+      return res.status(404).json({ 
+        message: `Technician not found for type "${techTypeNormalized}"`,
+        availableTypes: allTechs.map(t => t.technicianType)
+      });
     }
+
+    console.log(`   ✅ Found technician: ${technician.username} (type: ${technician.technicianType})`);
 
     const issue = await Issue.findByIdAndUpdate(
       req.params.id,
       {
         assignedTechnician: technician._id,
-        technicianType: technicianType.toLowerCase(), // ✅ Store in lowercase
+        technicianType: techTypeNormalized, // ✅ Store in lowercase
         status: 'assigned',
         'timestamps.assigned': new Date()
       },
@@ -175,10 +195,11 @@ exports.assignIssue = async (req, res) => {
       return res.status(404).json({ message: 'Issue not found' });
     }
 
+    console.log(`   ✅ Issue assigned: ${issue._id} -> ${technician.username} (type: ${issue.technicianType})`);
     res.json(issue);
   } catch (error) {
-    console.error('Assign issue error:', error);
-    res.status(500).json({ message: 'Error assigning issue' });
+    console.error('❌ Assign issue error:', error);
+    res.status(500).json({ message: 'Error assigning issue', error: error.message });
   }
 };
 
