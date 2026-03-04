@@ -346,16 +346,15 @@ function Manager({ userName, onLogout }) {
                         <th>Type</th>
                         <th>Priority</th>
                         <th>Tech Type</th>
-                        <th>Assigned To</th>
                         <th>Status</th>
                         <th>Submitted</th>
                         <th>Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {currentTabIssues?.map(issue => (
+                      {currentTabIssues?.map((issue, index) => (
                         <tr key={issue._id} className={`issue-row status-${issue.status} ${issue.responseAlert ? 'alert-response' : ''} ${issue.solveAlert ? 'alert-solve' : ''}`}>
-                          <td>#{issue._id}</td>
+                          <td>IS{index + 1}</td>
                           <td>
                             Block {issue.block}, Floor {issue.floor}, Room {issue.roomNumber}
                           </td>
@@ -369,7 +368,6 @@ function Manager({ userName, onLogout }) {
                           <td>
                             <span className="tech-badge">{issue.technicianType || 'Pending'}</span>
                           </td>
-                          <td>{issue.assignedTechnician?.username || 'Unassigned'}</td>
                           <td>
                             <span className={`status-badge status-${issue.status}`}>
                               {issue.status === 'submitted' ? 'New' : issue.status === 'assigned' ? 'In Progress' : issue.status}
@@ -421,9 +419,9 @@ function Manager({ userName, onLogout }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {completedTabIssues?.map(issue => (
+                    {completedTabIssues?.map((issue, index) => (
                       <tr key={issue._id} className="issue-row status-completed">
-                        <td>#{issue._id}</td>
+                        <td>IS{index + 1}</td>
                         <td>
                           Block {issue.block}, Floor {issue.floor}, Room {issue.roomNumber}
                         </td>
