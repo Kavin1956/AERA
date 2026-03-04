@@ -4,7 +4,7 @@ const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
 const connectDB = async (options = {}) => {
   const primaryUri = process.env.MONGO_URI;
-  const fallbackUri = process.env.MONGO_FALLBACK_URI || 'mongodb://localhost:27017/aera';
+  const fallbackUri = process.env.MONGO_FALLBACK_URI || 'mongodb://localhost:27017/aera_db';
   
   // Try primary URI first, then fallback
   const urisToTry = [];
@@ -16,8 +16,8 @@ const connectDB = async (options = {}) => {
     throw new Error('MongoDB URI not configured');
   }
 
-  const maxAttempts = options.maxAttempts || 3;
-  const baseDelay = options.baseDelay || 2000;
+  const maxAttempts = options.maxAttempts || 2; // Reduced from 3 to 2
+  const baseDelay = options.baseDelay || 1000; // Reduced from 2000 to 1000
 
   for (const uri of urisToTry) {
     console.log('📡 Connecting to MongoDB URI:', uri.replace(/:[^:]*@/, ':***@')); // Hide password in logs
@@ -26,7 +26,8 @@ const connectDB = async (options = {}) => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const connOptions = {
-          serverSelectionTimeoutMS: 10000,
+          serverSelectionTimeoutMS: 5000, // Reduced from 10000 to 5000
+          socketTimeoutMS: 45000,
           family: 4
         };
 

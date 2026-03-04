@@ -201,6 +201,14 @@ function DataCollector({ userName, onLogout }) {
   const handleSubmit = async () => {
     if (!validateStep4()) return;
 
+    // Check if user is actually a data_collector
+    const userRole = localStorage.getItem('userRole');
+    if (userRole !== 'data_collector') {
+      setError(`❌ Access denied: Only data collectors can submit issues. Your role is: ${userRole || 'unknown'}`);
+      alert(`Error: Only data collectors can submit issues.\nYour current role: ${userRole || 'unknown'}\n\nPlease logout and login as a Data Collector.`);
+      return;
+    }
+
     const { priority, technicianType } = calculatePriority();
     const problemLevel = calculateProblemLevel();
 
@@ -508,7 +516,9 @@ function DataCollector({ userName, onLogout }) {
                       className="form-input"
                       value={formData.roomNumber || ''}
                       onChange={handleChange}
+                      onInput={handleChange}
                       placeholder="Enter room number"
+                      autoComplete="off"
                     />
                   </div>
 

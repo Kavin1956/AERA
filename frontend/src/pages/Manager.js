@@ -188,6 +188,21 @@ function Manager({ userName, onLogout }) {
     }
   };
 
+  const sendWarningAlert = async (issueId) => {
+    try {
+      setIssues(issues.map(i =>
+        i._id === issueId ? { 
+          ...i, 
+          alerts: [...(i.alerts || []), 'warning'],
+          warningAlert: true
+        } : i
+      ));
+      alert('Warning alert sent to technician!');
+    } catch (err) {
+      console.error('Send warning error:', err);
+    }
+  };
+
   const getFilteredIssues = () => {
     let filtered = issues.filter(i => i.status !== 'completed');
     
@@ -443,46 +458,46 @@ function Manager({ userName, onLogout }) {
         </div>
       </div>
 
-      {/* Issue Details Modal - Clean & Professional */}
+      {/* Issue Details Modal */}
       {showDetails && selectedIssue && (
         <div className="modal-overlay" onClick={() => setShowDetails(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Issue IS{issues.findIndex(i => i._id === selectedIssue._id) + 1}</h3>
+              <h3>Issue ID: {selectedIssue._id?.slice(-6).toUpperCase()}</h3>
               <button className="close-btn" onClick={() => setShowDetails(false)}>×</button>
             </div>
 
             <div className="modal-body">
               <div className="issue-details">
-                {/* Reporter Information - Dynamic based on senderType */}
+                {/* Reporter Information - Dynamic based on userType */}
                 <div className="detail-section">
                   <h4>Reporter Information</h4>
                   
                   {selectedIssue.userType === 'student' && (
                     <>
                       <p><strong>Type:</strong> Student</p>
-                      <p><strong>Name:</strong> {selectedIssue.name || selectedIssue.submittedBy?.fullName || 'Unknown'}</p>
-                      {selectedIssue.rollNumber && <p><strong>Roll Number:</strong> {selectedIssue.rollNumber}</p>}
-                      {selectedIssue.department && <p><strong>Department:</strong> {selectedIssue.department}</p>}
-                      <p><strong>Email:</strong> {selectedIssue.submittedBy?.email || 'Not provided'}</p>
+                      <p><strong>Name:</strong> {selectedIssue.data?.name || selectedIssue.name || 'Unknown'}</p>
+                      <p><strong>Roll Number:</strong> {selectedIssue.data?.rollNumber || selectedIssue.rollNumber || 'Not provided'}</p>
+                      <p><strong>Department:</strong> {selectedIssue.data?.dept || selectedIssue.dept || 'Not provided'}</p>
+                      <p><strong>Email:</strong> {selectedIssue.data?.email || selectedIssue.submittedBy?.email || 'Not provided'}</p>
                     </>
                   )}
-                  
+
                   {selectedIssue.userType === 'faculty' && (
                     <>
                       <p><strong>Type:</strong> Faculty</p>
-                      <p><strong>Name:</strong> {selectedIssue.name || selectedIssue.submittedBy?.fullName || 'Unknown'}</p>
-                      {selectedIssue.facultyId && <p><strong>Faculty ID:</strong> {selectedIssue.facultyId}</p>}
-                      <p><strong>Email:</strong> {selectedIssue.submittedBy?.email || 'Not provided'}</p>
+                      <p><strong>Name:</strong> {selectedIssue.data?.name || selectedIssue.name || 'Unknown'}</p>
+                      <p><strong>Faculty ID:</strong> {selectedIssue.data?.facultyId || selectedIssue.facultyId || 'Not provided'}</p>
+                      <p><strong>Email:</strong> {selectedIssue.data?.email || selectedIssue.submittedBy?.email || 'Not provided'}</p>
                     </>
                   )}
-                  
+
                   {selectedIssue.userType === 'data_collector' && (
                     <>
                       <p><strong>Type:</strong> Data Collector</p>
-                      <p><strong>Name:</strong> {selectedIssue.name || selectedIssue.submittedBy?.fullName || 'Unknown'}</p>
-                      <p><strong>ID:</strong> {selectedIssue.submittedBy?.username || 'Unknown'}</p>
-                      <p><strong>Email:</strong> {selectedIssue.submittedBy?.email || 'Not provided'}</p>
+                      <p><strong>Name:</strong> {selectedIssue.data?.name || selectedIssue.name || 'Unknown'}</p>
+                      <p><strong>ID:</strong> {selectedIssue.data?.collectorId || selectedIssue.collectorId || 'Not provided'}</p>
+                      <p><strong>Email:</strong> {selectedIssue.data?.email || selectedIssue.submittedBy?.email || 'Not provided'}</p>
                     </>
                   )}
                 </div>
@@ -490,28 +505,24 @@ function Manager({ userName, onLogout }) {
                 {/* Location Details */}
                 <div className="detail-section">
                   <h4>Location Details</h4>
-                  <p><strong>Block:</strong> {selectedIssue.block || 'N/A'}</p>
-                  <p><strong>Floor:</strong> {selectedIssue.floor || 'N/A'}</p>
-                  <p><strong>Room Number:</strong> {selectedIssue.roomNumber || 'N/A'}</p>
-                  <p><strong>Location Type:</strong> {selectedIssue.locationCategory || 'N/A'}</p>
+                  <p><strong>Block:</strong> {selectedIssue.block}</p>
+                  <p><strong>Floor:</strong> {selectedIssue.floor}</p>
+                  <p><strong>Room Number:</strong> {selectedIssue.roomNumber}</p>
+                  <p><strong>Location Type:</strong> {selectedIssue.locationCategory}</p>
                 </div>
 
-                {/* Issue Details - Clean */}
+                {/* Issue Details - Overall Condition and Issue */}
                 <div className="detail-section">
                   <h4>Issue Details</h4>
-                  {selectedIssue.data?.overallCondition && (
-                    <p><strong>Overall Condition:</strong> {selectedIssue.data.overallCondition}</p>
-                  )}
-                  {selectedIssue.description || selectedIssue.issue || selectedIssue.data?.issue ? (
-                    <p><strong>Issue:</strong> {selectedIssue.description || selectedIssue.issue || selectedIssue.data?.issue || 'N/A'}</p>
-                  ) : null}
+                  <p><strong>Overall Condition:</strong> {selectedIssue.condition || 'Not assessed'}</p>
+                  <p><strong>Issue:</strong> {selectedIssue.otherSuggestions || 'No additional details'}</p>
                 </div>
               </div>
 
-              {/* Manager Assignment Section */}
+              {/* Manager Assignment Section - Only for submitted issues */}
               {selectedIssue.status === 'submitted' && (
                 <div className="analysis-section">
-                  <h4>Manager Assignment</h4>
+                  <h4>Manager Analysis & Assignment</h4>
 
                   <div className="form-group">
                     <label>Risk Level</label>
@@ -533,13 +544,13 @@ function Manager({ userName, onLogout }) {
                       value={analysisNotes}
                       onChange={(e) => setAnalysisNotes(e.target.value)}
                       className="form-input form-textarea"
-                      rows={3}
-                      placeholder="Enter your analysis and notes..."
+                      placeholder="Enter your analysis and notes here..."
+                      rows={4}
                     />
                   </div>
 
                   <div className="form-group">
-                    <label>Assign to Technician Type</label>
+                    <label>Assign to Technician</label>
                     <select
                       value={selectedTechnicianType}
                       onChange={(e) => setSelectedTechnicianType(e.target.value)}
@@ -552,45 +563,49 @@ function Manager({ userName, onLogout }) {
                       <option value="others">Others</option>
                     </select>
                   </div>
-
-                  {!selectedTechnicianType && selectedIssue.technicianType && (
-                    <p className="info-text">Recommended: {getTechnicianTypeDisplay(selectedIssue.technicianType)}</p>
-                  )}
                 </div>
               )}
 
-              {selectedIssue.status === 'assigned' && (
-                <div className="detail-section">
-                  <h4>Assignment Status</h4>
-                  <p><strong>Assigned to:</strong> {selectedIssue.assignedTechnician?.fullName || selectedIssue.assignedTechnician?.username || 'Technician'}</p>
-                  <p><strong>Technician Type:</strong> {getTechnicianTypeDisplay(selectedIssue.technicianType)}</p>
-                </div>
-              )}
-
-              {selectedIssue.status === 'completed' && (
-                <div className="detail-section">
-                  <h4>✓ Issue Completed</h4>
-                  <p><strong>Completed on:</strong> {new Date(selectedIssue.timestamps?.completed).toLocaleString()}</p>
+              {/* Assigned Status Section */}
+              {selectedIssue.status === 'assigned' && selectedIssue.solveAlert && (
+                <div className="alert-section">
+                  <h4>⏰ Solution Deadline Exceeded</h4>
+                  <p>This issue has not been resolved within 5 hours. Send warning to technician?</p>
                 </div>
               )}
             </div>
 
             <div className="modal-footer">
               {selectedIssue.status === 'submitted' && (
-                <button
-                  className="assign-btn"
-                  onClick={() => handleSaveAnalysisAndAssign(selectedIssue._id)}
-                >
-                  Save & Assign
-                </button>
+                <>
+                  <button
+                    className="assign-btn"
+                    onClick={() => handleSaveAnalysisAndAssign(selectedIssue._id)}
+                  >
+                    Save & Assign
+                  </button>
+                </>
               )}
               {selectedIssue.status === 'assigned' && (
-                <button
-                  className="complete-btn"
-                  onClick={() => handleCompleteIssue(selectedIssue._id)}
-                >
-                  Mark as Completed
-                </button>
+                <>
+                  <button
+                    className="complete-btn"
+                    onClick={() => handleCompleteIssue(selectedIssue._id)}
+                  >
+                    Mark as Completed
+                  </button>
+                  {selectedIssue.solveAlert && (
+                    <button
+                      className="warning-btn"
+                      onClick={() => sendWarningAlert(selectedIssue._id)}
+                    >
+                      Send Warning Alert
+                    </button>
+                  )}
+                </>
+              )}
+              {selectedIssue.status === 'completed' && (
+                <p className="completed-message">✓ Issue Completed</p>
               )}
               <button
                 className="cancel-btn"

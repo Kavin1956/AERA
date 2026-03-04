@@ -70,19 +70,19 @@ function App() {
         />
         <Route 
           path="/data-collector" 
-          element={isAuthenticated && userRole === 'data_collector' ? 
+          element={isAuthenticated ? 
             <DataCollector userName={userName} onLogout={handleLogout} /> : 
             <Navigate to="/login" />} 
         />
         <Route 
           path="/manager" 
-          element={isAuthenticated && userRole === 'manager' ? 
+          element={isAuthenticated ? 
             <Manager userName={userName} onLogout={handleLogout} /> : 
             <Navigate to="/login" />} 
         />
         <Route 
           path="/technician" 
-          element={isAuthenticated && userRole === 'technician' ? 
+          element={isAuthenticated ? 
             <Technician userName={userName} onLogout={handleLogout} /> : 
             <Navigate to="/login" />} 
         />

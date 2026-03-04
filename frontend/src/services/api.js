@@ -6,7 +6,8 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  timeout: 15000 // 15 second timeout for Render backend
 });
 
 // Add token to requests if it exists
