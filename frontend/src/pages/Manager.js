@@ -19,6 +19,7 @@ function Manager({ userName, onLogout }) {
   const [newIssueAlert, setNewIssueAlert] = useState(''); // To show notification of new issue
 
   const [selectedIssue, setSelectedIssue] = useState(null);
+  const [selectedIssueDisplayId, setSelectedIssueDisplayId] = useState('');
   const [showDetails, setShowDetails] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedTechnicianType, setSelectedTechnicianType] = useState('');
@@ -472,6 +473,7 @@ function Manager({ userName, onLogout }) {
                               className="view-btn"
                               onClick={() => {
                                 setSelectedIssue(issue);
+                                setSelectedIssueDisplayId(`IS${index + 1}`);
                                 setShowDetails(true);
                               }}
                             >
@@ -533,6 +535,7 @@ function Manager({ userName, onLogout }) {
                             className="view-btn"
                             onClick={() => {
                               setSelectedIssue(issue);
+                              setSelectedIssueDisplayId(`IS${index + 1}`);
                               setShowDetails(true);
                             }}
                           >
@@ -554,7 +557,7 @@ function Manager({ userName, onLogout }) {
         <div className="modal-overlay" onClick={() => setShowDetails(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Issue ID: {selectedIssue._id}</h3>
+              <h3>Issue ID: {selectedIssueDisplayId}</h3>
               <button className="close-btn" onClick={() => setShowDetails(false)}>×</button>
             </div>
 
@@ -672,7 +675,7 @@ function Manager({ userName, onLogout }) {
                     <p style={{ marginLeft: '20px' }}>No additional details</p>
                   )}
                   
-                  <p style={{ marginTop: '0.75rem' }}><strong>Priority:</strong> P{selectedIssue.priority}</p>
+                  <p style={{ marginTop: '0.75rem', color: '#2c3e50' }}><strong>Priority:</strong> <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>P{selectedIssue.priority}</span></p>
                 </div>
               </div>
 
