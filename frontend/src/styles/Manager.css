@@ -256,8 +256,8 @@
 .issues-table th {
   padding: 1rem;
   text-align: left;
-  font-weight: 600;
-  color: #2c3e50;
+  font-weight: 700;
+  color: #1a1a1a;
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -300,32 +300,37 @@
 
 .priority-badge.priority-1 {
   background: #ffcdd2;
-  color: #c62828;
+  color: #b71c1c;
   border: 1px solid #ef5350;
+  font-weight: 700;
 }
 
 .priority-badge.priority-2 {
   background: #ffe0b2;
-  color: #e65100;
+  color: #cc5500;
   border: 1px solid #ffb74d;
+  font-weight: 700;
 }
 
 .priority-badge.priority-3 {
   background: #fff9c4;
-  color: #f57f17;
+  color: #d4a500;
   border: 1px solid #fbc02d;
+  font-weight: 700;
 }
 
 .priority-badge.priority-4 {
   background: #e1bee7;
-  color: #6a1b9a;
+  color: #4a148c;
   border: 1px solid #ce93d8;
+  font-weight: 700;
 }
 
 .priority-badge.priority-5 {
   background: #cfd8dc;
-  color: #37474f;
+  color: #1a237e;
   border: 1px solid #90a4ae;
+  font-weight: 700;
 }
 
 .severity-badge {
