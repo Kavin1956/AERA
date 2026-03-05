@@ -294,65 +294,112 @@ function Technician({ userName, onLogout }) {
 
             <div className="modal-body">
               <div className="task-details">
+                {/* Reporter Information - Dynamic based on userType */}
                 <div className="detail-section">
-                  <h4>Location Information</h4>
-                  <p><strong>Type:</strong> {selectedTask.userType || selectedTask.locationCategory}</p>
+                  <h4>Reporter Information</h4>
+                  {selectedTask.userType === 'student' && (
+                    <>
+                      <p><strong>Type:</strong> Student</p>
+                      <p><strong>Name:</strong> {selectedTask.data?.name || selectedTask.name || 'Student'}</p>
+                      <p><strong>Roll Number:</strong> {selectedTask.data?.rollNumber || selectedTask.rollNumber || 'Not provided'}</p>
+                      <p><strong>Department:</strong> {selectedTask.data?.dept || selectedTask.dept || 'Not provided'}</p>
+                      <p><strong>Email:</strong> {selectedTask.data?.email || selectedTask.submittedBy?.email || 'Not provided'}</p>
+                    </>
+                  )}
+                  {selectedTask.userType === 'faculty' && (
+                    <>
+                      <p><strong>Type:</strong> Faculty</p>
+                      <p><strong>Name:</strong> {selectedTask.data?.name || selectedTask.name || 'Faculty'}</p>
+                      <p><strong>Faculty ID:</strong> {selectedTask.data?.facultyId || selectedTask.facultyId || 'Not provided'}</p>
+                      <p><strong>Email:</strong> {selectedTask.data?.email || selectedTask.submittedBy?.email || 'Not provided'}</p>
+                    </>
+                  )}
+                  {selectedTask.userType === 'data_collector' && (
+                    <>
+                      <p><strong>Type:</strong> Data Collector</p>
+                      <p><strong>Name:</strong> {selectedTask.data?.name || selectedTask.name || 'Data Collector'}</p>
+                      <p><strong>ID:</strong> {selectedTask.data?.collectorId || selectedTask.collectorId || 'Not provided'}</p>
+                      <p><strong>Email:</strong> {selectedTask.data?.email || selectedTask.submittedBy?.email || 'Not provided'}</p>
+                    </>
+                  )}
+                </div>
+
+                {/* Location Details */}
+                <div className="detail-section">
+                  <h4>Location Details</h4>
                   <p><strong>Block:</strong> {selectedTask.block}</p>
                   <p><strong>Floor:</strong> {selectedTask.floor}</p>
                   <p><strong>Room Number:</strong> {selectedTask.roomNumber}</p>
+                  <p><strong>Location Type:</strong> {selectedTask.locationCategory}</p>
                 </div>
 
+                {/* Issue Details - Overall Condition and Issue */}
                 <div className="detail-section">
                   <h4>Issue Details</h4>
-                  <p><strong>Overall Condition:</strong> {selectedTask.condition}</p>
-                  
-                  {/* Specific Issues Found */}
+                  <p><strong>Overall Condition:</strong> {selectedTask.condition || 'Not assessed'}</p>
+                  {/* Display specific problems from the issue data */}
                   <p><strong>Specific Issues Found:</strong></p>
                   {selectedTask.data ? (
                     <div style={{ marginLeft: '20px' }}>
                       {(() => {
                         const problems = [];
                         const data = selectedTask.data;
-                        
-                        // Check for not working items
-                        if (data.projector === 'Not Working') problems.push('📽️ Projector not working');
-                        if (data.ac === 'Not Working') problems.push('❄️ AC not working');
-                        if (data.ac === 'Partially Working') problems.push('❄️ AC partially working');
-                        if (data.whiteboard === 'Poor') problems.push('📝 Whiteboard in poor condition');
-                        if (data.lights === 'Not Working') problems.push('💡 Lights not working');
-                        if (data.lights === 'Partial') problems.push('💡 Lights partially working');
-                        if (data.fans === 'Not Working') problems.push('🌀 Fans not working');
-                        if (data.fans === 'Partial') problems.push('🌀 Fans partially working');
-                        if (data.powerSupply === 'Fluctuating') problems.push('⚡ Power supply fluctuating');
-                        if (data.powerSupply === 'Frequent Outages') problems.push('⚡ Frequent power outages');
-                        if (data.systemPc === 'Not Working') problems.push('💻 System/PC not working');
-                        if (data.systemPc === 'Not Available') problems.push('💻 System/PC not available');
-                        if (data.junctionBox === 'Needs Attention') problems.push('⚠️ Junction box needs attention');
-                        if (data.junctionBox === 'Unsafe') problems.push('🚨 Junction box unsafe');
-                        if (data.seatsAvailability && data.seatsAvailability < 10) problems.push(`📺 Limited seats: ${data.seatsAvailability} available`);
-                        if (data.mikeCondition === 'Needs Repair') problems.push('🎤 Mike/Speaker needs repair');
-                        if (data.mikeCondition === 'Not Available') problems.push('🎤 Mike/Speaker not available');
-                        if (data.whiteboards === 'Fair') problems.push('📝 Whiteboards in fair condition');
-                        if (data.whiteboards === 'Poor') problems.push('📝 Whiteboards in poor condition');
-                        if (data.temperature && data.temperature > 30) problems.push(`🌡️ High temperature: ${data.temperature}°C`);
-                        
+                        // Infrastructure Issues
+                        if (data.whiteboardNeedsCleaning) problems.push('📝 Whiteboard needs cleaning');
+                        if (data.whiteboardDamaged) problems.push('📝 Whiteboard damaged');
+                        if (data.brokenChairs) problems.push('🪑 Broken chairs');
+                        if (data.damagedTables) problems.push('📦 Damaged tables');
+                        // Digital Equipment Issues
+                        if (data.systemSlowPerformance) problems.push('💻 System slow performance');
+                        if (data.systemNotWorking) problems.push('💻 System/PC not working');
+                        if (data.projectorNotWorking) problems.push('📽️ Projector not working');
+                        if (data.projectorNotAvailable) problems.push('📽️ Projector not available');
+                        if (data.slowInternet) problems.push('🌐 Slow internet');
+                        if (data.noInternet) problems.push('🌐 No internet');
+                        // Environmental Issues
+                        if (data.temperatureTooHot) problems.push('🌡️ Temperature too hot');
+                        if (data.temperatureTooCold) problems.push('❄️ Temperature too cold');
+                        if (data.dustyEnvironment) problems.push('💨 Dusty environment');
+                        if (data.poorVentilation) problems.push('💨 Poor ventilation');
+                        // Electrical & Power Issues
+                        if (data.powerSupplyFluctuating) problems.push('⚡ Power supply fluctuating');
+                        if (data.powerFailure) problems.push('⚡ Power failure');
+                        if (data.acNotWorking) problems.push('❄️ AC not working');
+                        if (data.dimLighting) problems.push('💡 Dim lighting');
+                        if (data.lightingNotWorking) problems.push('💡 Lighting not working');
+                        if (data.fanNotWorking) problems.push('🌀 Fan not working');
+                        if (data.junctionBoxExtraAvailable) problems.push('📦 Junction box extra available');
+                        if (data.junctionBoxDamaged) problems.push('🚨 Junction box damaged');
+                        // Safety Issues
+                        if (data.fireEquipmentNotAvailable) problems.push('🔥 Fire equipment not available');
+                        if (data.exitBlocked) problems.push('🚪 Emergency exit blocked');
+                        if (data.looseWires) problems.push('⚠️ Loose wires');
+                        if (data.damagedSwitches) problems.push('⚠️ Damaged switches');
                         if (problems.length > 0) {
-                          return problems.map((p, i) => <p key={i} style={{ margin: '5px 0' }}>{p}</p>);
+                          return (
+                            <>
+                              {problems.map((p, i) => <p key={i} style={{ margin: '5px 0', color: '#e74c3c' }}>{p}</p>)}
+                              {data.otherSuggestions && (
+                                <>
+                                  <p style={{ margin: '8px 0 3px 0', color: '#2c3e50', fontWeight: '500' }}>📋 Additional Comments:</p>
+                                  <p style={{ margin: '3px 0', color: '#555', fontStyle: 'italic' }}>{data.otherSuggestions}</p>
+                                </>
+                              )}
+                            </>
+                          );
                         } else {
-                          return <p style={{ margin: '5px 0', color: '#666' }}>No specific problems reported - all systems functioning normally</p>;
+                          return <p style={{ margin: '5px 0', color: '#27ae60' }}>✓ No specific issues - all systems functioning normally</p>;
                         }
                       })()}
                     </div>
                   ) : (
                     <p style={{ marginLeft: '20px' }}>No additional details</p>
                   )}
-                  
-                  <p style={{ marginTop: '0.75rem' }}><strong>Priority:</strong> {selectedTask.priority}</p>
+                  <p style={{ marginTop: '0.75rem', color: '#2c3e50' }}><strong>Priority:</strong> <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>P{selectedTask.priority}</span></p>
                 </div>
 
                 <div className="detail-section">
                   <h4>Timeline</h4>
-                  <p><strong>Reported by:</strong> {selectedTask.submittedBy?.fullName || selectedTask.submittedBy || 'System'}</p>
                   <p><strong>Submitted:</strong> {selectedTask.timestamps?.submitted ? new Date(selectedTask.timestamps.submitted).toLocaleString() : 'Unknown'}</p>
                   {selectedTask.timestamps?.assigned && (
                     <p><strong>Assigned Date:</strong> {new Date(selectedTask.timestamps.assigned).toLocaleString()}</p>
