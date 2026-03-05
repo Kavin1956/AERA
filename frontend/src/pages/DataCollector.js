@@ -118,14 +118,27 @@ function DataCollector({ userName, onLogout }) {
       setError('Please select a condition status');
       return false;
     }
-    // Check if at least one detail field is filled
-    const hasAnyDetail = formData.whiteboard || formData.ac || formData.systemPc || 
-                         formData.temperature || formData.powerSupply || formData.projector ||
-                         formData.whiteboards || formData.seatsAvailability || formData.junctionBox ||
-                         formData.mikeCondition || formData.otherSuggestions;
+    // Check if at least one issue or comment is provided
+    const hasAnyIssue = 
+      formData.whiteboardNeedsCleaning || formData.whiteboardDamaged ||
+      formData.brokenChairs || formData.damagedTables ||
+      formData.systemSlowPerformance || formData.systemNotWorking ||
+      formData.projectorNotWorking || formData.projectorNotAvailable ||
+      formData.slowInternet || formData.noInternet ||
+      formData.temperatureTooHot || formData.temperatureTooCold ||
+      formData.dustyEnvironment || formData.poorVentilation ||
+      formData.powerSupplyFluctuating || formData.powerFailure ||
+      formData.acNotWorking ||
+      formData.dimLighting || formData.lightingNotWorking ||
+      formData.fanNotWorking ||
+      formData.junctionBoxExtraAvailable || formData.junctionBoxDamaged ||
+      formData.fireEquipmentNotAvailable ||
+      formData.exitBlocked ||
+      formData.looseWires || formData.damagedSwitches ||
+      formData.otherSuggestions;
     
-    if (!hasAnyDetail) {
-      setError('Please provide at least one detail about the condition');
+    if (!hasAnyIssue) {
+      setError('Please select at least one issue or provide additional comments');
       return false;
     }
     return true;
@@ -149,12 +162,15 @@ function DataCollector({ userName, onLogout }) {
   const calculateProblemLevel = () => {
     // High level: Multiple issues or critical issues
     const criticalIssues = [
-      formData.ac === 'Not Working',
-      formData.powerSupply === 'Frequent Outages',
-      formData.projector === 'Not Working',
-      formData.systemPc === 'Not Working',
-      formData.junctionBox === 'Unsafe',
-      formData.condition === 'Critical' || formData.condition === 'Poor'
+      formData.acNotWorking,
+      formData.systemNotWorking,
+      formData.powerFailure,
+      formData.projectorNotWorking,
+      formData.exitBlocked,
+      formData.fireEquipmentNotAvailable,
+      formData.looseWires,
+      formData.damagedSwitches,
+      formData.condition === 'Critical Issue' || formData.condition === 'Serious Issue'
     ].filter(Boolean).length;
 
     if (criticalIssues >= 2) return 'High';
@@ -163,36 +179,44 @@ function DataCollector({ userName, onLogout }) {
   };
 
   const calculatePriority = () => {
-    // Priority based on condition and location type
+    // Priority based on condition and detected issues
     const severity = formData.condition?.toLowerCase();
     let priority = 'Low'; // Default: Low priority
     let technicianType = 'others';
 
-    // Water supply issues -> High priority
-    if (formData.powerSupply?.toLowerCase().includes('water') || 
-        formData.waterSupply) {
+    // Critical/Safety issues -> High priority
+    if (formData.exitBlocked || formData.looseWires || formData.damagedSwitches || 
+        formData.fireEquipmentNotAvailable) {
       priority = 'High';
-      technicianType = 'water';
+      technicianType = 'electricity';
     }
     // Projector problems -> High priority
-    else if (formData.projector === 'Not Working' || 
-             formData.projector === 'not_working') {
+    else if (formData.projectorNotWorking) {
       priority = 'High';
       technicianType = 'electricity';
     }
-    // Electricity/power supply or AC not working -> High priority
-    else if (formData.powerSupply?.toLowerCase().includes('outage') || 
-             formData.powerSupply === 'Frequent Outages' ||
-             formData.ac === 'Not Working') {
+    // Power/Electricity issues -> High priority
+    else if (formData.powerFailure || formData.powerSupplyFluctuating || 
+             formData.acNotWorking) {
       priority = 'High';
       technicianType = 'electricity';
     }
-    // Cleanliness or poor condition -> Medium priority
-    else if (formData.whiteboard === 'Poor' || 
-             formData.whiteboards === 'Poor' ||
-             severity === 'poor') {
+    // System/PC not working -> High priority
+    else if (formData.systemNotWorking) {
+      priority = 'High';
+      technicianType = 'electricity';
+    }
+    // Environmental/Comfort issues -> Medium priority
+    else if (formData.temperatureTooHot || formData.temperatureTooCold ||
+             formData.dustyEnvironment || formData.poorVentilation) {
       priority = 'Medium';
-      technicianType = 'cleaning';
+      technicianType = 'hvac';
+    }
+    // Infrastructure issues -> Medium priority
+    else if (formData.brokenChairs || formData.damagedTables ||
+             formData.whiteboardDamaged) {
+      priority = 'Medium';
+      technicianType = 'maintenance';
     }
 
     return { priority, technicianType };
@@ -556,351 +580,390 @@ function DataCollector({ userName, onLogout }) {
               {/* Step 4: Condition Details */}
               {currentStep === 4 && (
                 <div className="form-step">
-                  <div className="form-group">
-                    <label htmlFor="condition" className="form-label">Overall Condition Status *</label>
-                    <select
-                      id="condition"
-                      name="condition"
-                      className="form-input form-select"
-                      value={formData.condition || ''}
-                      onChange={handleChange}
-                    >
-                      <option value="">Select Condition</option>
-                      <option value="Excellent">Excellent</option>
-                      <option value="Good">Good</option>
-                      <option value="Fair">Fair</option>
-                      <option value="Poor">Poor</option>
-                      <option value="Critical">Critical</option>
-                    </select>
+                  {/* Section 1: Overall Condition Status */}
+                  <div className="form-section">
+                    <h3 className="section-title">1. Overall Condition Status</h3>
+                    <div className="form-group">
+                      <label htmlFor="condition" className="form-label">Severity Level *</label>
+                      <select
+                        id="condition"
+                        name="condition"
+                        className="form-input form-select"
+                        value={formData.condition || ''}
+                        onChange={handleChange}
+                      >
+                        <option value="">Select Condition</option>
+                        <option value="Moderate Issue">Moderate Issue</option>
+                        <option value="Serious Issue">Serious Issue</option>
+                        <option value="Critical Issue">Critical Issue</option>
+                      </select>
+                    </div>
                   </div>
 
-                  {/* Classroom Condition Fields */}
-                  {locationCategory === 'classroom' && (
-                    <>
-                      <div className="form-group">
-                        <label htmlFor="whiteboard" className="form-label">Whiteboard Condition *</label>
-                        <select
-                          id="whiteboard"
-                          name="whiteboard"
-                          className="form-input form-select"
-                          value={formData.whiteboard || ''}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select</option>
-                          <option value="Good">Good</option>
-                          <option value="Fair">Fair</option>
-                          <option value="Poor">Poor</option>
-                        </select>
+                  {/* Section 2: Classroom Infrastructure Issues */}
+                  <div className="form-section">
+                    <h3 className="section-title">2. Classroom Infrastructure Issues</h3>
+                    
+                    <div className="form-group">
+                      <label className="form-label">Whiteboard Issue</label>
+                      <div className="checkbox-group">
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="whiteboardNeedsCleaning"
+                            checked={formData.whiteboardNeedsCleaning || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Needs Cleaning</span>
+                        </label>
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="whiteboardDamaged"
+                            checked={formData.whiteboardDamaged || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Damaged</span>
+                        </label>
                       </div>
+                    </div>
 
-                      <div className="form-group">
-                        <label htmlFor="ac" className="form-label">AC Status *</label>
-                        <select
-                          id="ac"
-                          name="ac"
-                          className="form-input form-select"
-                          value={formData.ac || ''}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select</option>
-                          <option value="Working">Working</option>
-                          <option value="Not Working">Not Working</option>
-                          <option value="Partially Working">Partially Working</option>
-                        </select>
+                    <div className="form-group">
+                      <label className="form-label">Furniture Issue</label>
+                      <div className="checkbox-group">
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="brokenChairs"
+                            checked={formData.brokenChairs || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Broken Chairs</span>
+                        </label>
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="damagedTables"
+                            checked={formData.damagedTables || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Damaged Tables</span>
+                        </label>
                       </div>
+                    </div>
+                  </div>
 
-                      <div className="form-group">
-                        <label htmlFor="systemPc" className="form-label">System/PC Status *</label>
-                        <select
-                          id="systemPc"
-                          name="systemPc"
-                          className="form-input form-select"
-                          value={formData.systemPc || ''}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select</option>
-                          <option value="Working">Working</option>
-                          <option value="Not Working">Not Working</option>
-                          <option value="Not Available">Not Available</option>
-                        </select>
+                  {/* Section 3: Digital Equipment Issues */}
+                  <div className="form-section">
+                    <h3 className="section-title">3. Digital Equipment Issues</h3>
+                    
+                    <div className="form-group">
+                      <label className="form-label">System / PC Issue</label>
+                      <div className="checkbox-group">
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="systemSlowPerformance"
+                            checked={formData.systemSlowPerformance || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Slow Performance</span>
+                        </label>
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="systemNotWorking"
+                            checked={formData.systemNotWorking || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Not Working</span>
+                        </label>
                       </div>
+                    </div>
 
-                      <div className="form-group">
-                        <label htmlFor="temperature" className="form-label">Temperature (°C) *</label>
-                        <input
-                          type="number"
-                          id="temperature"
-                          name="temperature"
-                          className="form-input"
-                          value={formData.temperature || ''}
-                          onChange={handleChange}
-                          placeholder="Enter temperature"
-                          min="0"
-                          max="50"
-                        />
+                    <div className="form-group">
+                      <label className="form-label">Projector Issue</label>
+                      <div className="checkbox-group">
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="projectorNotWorking"
+                            checked={formData.projectorNotWorking || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Not Working</span>
+                        </label>
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="projectorNotAvailable"
+                            checked={formData.projectorNotAvailable || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Not Available</span>
+                        </label>
                       </div>
+                    </div>
 
-                      <div className="form-group">
-                        <label htmlFor="powerSupply" className="form-label">Power Supply Status *</label>
-                        <select
-                          id="powerSupply"
-                          name="powerSupply"
-                          className="form-input form-select"
-                          value={formData.powerSupply || ''}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select</option>
-                          <option value="Stable">Stable</option>
-                          <option value="Fluctuating">Fluctuating</option>
-                          <option value="Frequent Outages">Frequent Outages</option>
-                        </select>
+                    <div className="form-group">
+                      <label className="form-label">Internet Issue</label>
+                      <div className="checkbox-group">
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="slowInternet"
+                            checked={formData.slowInternet || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Slow Internet</span>
+                        </label>
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="noInternet"
+                            checked={formData.noInternet || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>No Internet</span>
+                        </label>
                       </div>
-                    </>
-                  )}
+                    </div>
+                  </div>
 
-                  {/* Lab Condition Fields */}
-                  {locationCategory === 'lab' && (
-                    <>
-                      <div className="form-group">
-                        <label htmlFor="ac" className="form-label">AC Status *</label>
-                        <select
-                          id="ac"
-                          name="ac"
-                          className="form-input form-select"
-                          value={formData.ac || ''}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select</option>
-                          <option value="Working">Working</option>
-                          <option value="Not Working">Not Working</option>
-                          <option value="Partially Working">Partially Working</option>
-                        </select>
+                  {/* Section 4: Environmental Issues */}
+                  <div className="form-section">
+                    <h3 className="section-title">4. Environmental Issues</h3>
+                    
+                    <div className="form-group">
+                      <label className="form-label">Temperature Issue</label>
+                      <div className="checkbox-group">
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="temperatureTooHot"
+                            checked={formData.temperatureTooHot || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Too Hot</span>
+                        </label>
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="temperatureTooCold"
+                            checked={formData.temperatureTooCold || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Too Cold</span>
+                        </label>
                       </div>
+                    </div>
 
-                      <div className="form-group">
-                        <label htmlFor="powerSupply" className="form-label">Power Supply Status *</label>
-                        <select
-                          id="powerSupply"
-                          name="powerSupply"
-                          className="form-input form-select"
-                          value={formData.powerSupply || ''}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select</option>
-                          <option value="Stable">Stable</option>
-                          <option value="Fluctuating">Fluctuating</option>
-                          <option value="Frequent Outages">Frequent Outages</option>
-                        </select>
+                    <div className="form-group">
+                      <label className="form-label">Air Quality Issue</label>
+                      <div className="checkbox-group">
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="dustyEnvironment"
+                            checked={formData.dustyEnvironment || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Dusty Environment</span>
+                        </label>
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="poorVentilation"
+                            checked={formData.poorVentilation || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Poor Ventilation</span>
+                        </label>
                       </div>
+                    </div>
+                  </div>
 
-                      <div className="form-group">
-                        <label htmlFor="systemPc" className="form-label">System/PC Status *</label>
-                        <select
-                          id="systemPc"
-                          name="systemPc"
-                          className="form-input form-select"
-                          value={formData.systemPc || ''}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select</option>
-                          <option value="Working">Working</option>
-                          <option value="Not Working">Not Working</option>
-                          <option value="Not Available">Not Available</option>
-                        </select>
+                  {/* Section 5: Electrical & Power Issues */}
+                  <div className="form-section">
+                    <h3 className="section-title">5. Electrical & Power Issues</h3>
+                    
+                    <div className="form-group">
+                      <label className="form-label">Power Supply Issue</label>
+                      <div className="checkbox-group">
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="powerSupplyFluctuating"
+                            checked={formData.powerSupplyFluctuating || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Fluctuating Power</span>
+                        </label>
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="powerFailure"
+                            checked={formData.powerFailure || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Power Failure</span>
+                        </label>
                       </div>
+                    </div>
 
-                      <div className="form-group">
-                        <label htmlFor="projector" className="form-label">Projector Status *</label>
-                        <select
-                          id="projector"
-                          name="projector"
-                          className="form-input form-select"
-                          value={formData.projector || ''}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select</option>
-                          <option value="Working">Working</option>
-                          <option value="Not Working">Not Working</option>
-                          <option value="Not Available">Not Available</option>
-                        </select>
+                    <div className="form-group">
+                      <label className="form-label">AC Issue</label>
+                      <div className="checkbox-group">
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="acNotWorking"
+                            checked={formData.acNotWorking || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Not Working</span>
+                        </label>
                       </div>
+                    </div>
 
-                      <div className="form-group">
-                        <label htmlFor="whiteboards" className="form-label">Whiteboards Condition *</label>
-                        <select
-                          id="whiteboards"
-                          name="whiteboards"
-                          className="form-input form-select"
-                          value={formData.whiteboards || ''}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select</option>
-                          <option value="Good">Good</option>
-                          <option value="Fair">Fair</option>
-                          <option value="Poor">Poor</option>
-                        </select>
+                    <div className="form-group">
+                      <label className="form-label">Lighting Issue</label>
+                      <div className="checkbox-group">
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="dimLighting"
+                            checked={formData.dimLighting || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Dim Lighting</span>
+                        </label>
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="lightingNotWorking"
+                            checked={formData.lightingNotWorking || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Not Working</span>
+                        </label>
                       </div>
+                    </div>
 
-                      <div className="form-group">
-                        <label htmlFor="seatsAvailability" className="form-label">Seats Availability *</label>
-                        <input
-                          type="number"
-                          id="seatsAvailability"
-                          name="seatsAvailability"
-                          className="form-input"
-                          value={formData.seatsAvailability || ''}
-                          onChange={handleChange}
-                          placeholder="Number of available seats"
-                          min="0"
-                        />
+                    <div className="form-group">
+                      <label className="form-label">Fan Issue</label>
+                      <div className="checkbox-group">
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="fanNotWorking"
+                            checked={formData.fanNotWorking || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Not Working</span>
+                        </label>
                       </div>
+                    </div>
 
-                      <div className="form-group">
-                        <label htmlFor="junctionBox" className="form-label">Junction Box Status *</label>
-                        <select
-                          id="junctionBox"
-                          name="junctionBox"
-                          className="form-input form-select"
-                          value={formData.junctionBox || ''}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select</option>
-                          <option value="Safe">Safe</option>
-                          <option value="Needs Attention">Needs Attention</option>
-                          <option value="Unsafe">Unsafe</option>
-                        </select>
+                    <div className="form-group">
+                      <label className="form-label">Junction Box Status</label>
+                      <div className="checkbox-group">
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="junctionBoxExtraAvailable"
+                            checked={formData.junctionBoxExtraAvailable || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Extra Available</span>
+                        </label>
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="junctionBoxDamaged"
+                            checked={formData.junctionBoxDamaged || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Damaged</span>
+                        </label>
                       </div>
-                    </>
-                  )}
+                    </div>
+                  </div>
 
-                  {/* Seminar Hall Condition Fields */}
-                  {locationCategory === 'seminar' && (
-                    <>
-                      <div className="form-group">
-                        <label htmlFor="projector" className="form-label">Projector Status *</label>
-                        <select
-                          id="projector"
-                          name="projector"
-                          className="form-input form-select"
-                          value={formData.projector || ''}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select</option>
-                          <option value="Working">Working</option>
-                          <option value="Not Working">Not Working</option>
-                          <option value="Not Available">Not Available</option>
-                        </select>
+                  {/* Section 6: Safety Risk Identification */}
+                  <div className="form-section">
+                    <h3 className="section-title">6. Safety Risk Identification</h3>
+                    
+                    <div className="form-group">
+                      <label className="form-label">Fire Safety Issue</label>
+                      <div className="checkbox-group">
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="fireEquipmentNotAvailable"
+                            checked={formData.fireEquipmentNotAvailable || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Fire Equipment Not Available</span>
+                        </label>
                       </div>
+                    </div>
 
-                      <div className="form-group">
-                        <label htmlFor="systemPc" className="form-label">System/PC Status *</label>
-                        <select
-                          id="systemPc"
-                          name="systemPc"
-                          className="form-input form-select"
-                          value={formData.systemPc || ''}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select</option>
-                          <option value="Working">Working</option>
-                          <option value="Not Working">Not Working</option>
-                          <option value="Not Available">Not Available</option>
-                        </select>
+                    <div className="form-group">
+                      <label className="form-label">Emergency Exit Issue</label>
+                      <div className="checkbox-group">
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="exitBlocked"
+                            checked={formData.exitBlocked || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Exit Blocked</span>
+                        </label>
                       </div>
+                    </div>
 
-                      <div className="form-group">
-                        <label htmlFor="whiteboard" className="form-label">Whiteboard Condition *</label>
-                        <select
-                          id="whiteboard"
-                          name="whiteboard"
-                          className="form-input form-select"
-                          value={formData.whiteboard || ''}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select</option>
-                          <option value="Good">Good</option>
-                          <option value="Fair">Fair</option>
-                          <option value="Poor">Poor</option>
-                        </select>
+                    <div className="form-group">
+                      <label className="form-label">Electrical Hazard</label>
+                      <div className="checkbox-group">
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="looseWires"
+                            checked={formData.looseWires || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Loose Wires</span>
+                        </label>
+                        <label className="checkbox-option">
+                          <input
+                            type="checkbox"
+                            name="damagedSwitches"
+                            checked={formData.damagedSwitches || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.checked }))}
+                          />
+                          <span>Damaged Switches</span>
+                        </label>
                       </div>
+                    </div>
+                  </div>
 
-                      <div className="form-group">
-                        <label htmlFor="powerSupply" className="form-label">Power Supply Status *</label>
-                        <select
-                          id="powerSupply"
-                          name="powerSupply"
-                          className="form-input form-select"
-                          value={formData.powerSupply || ''}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select</option>
-                          <option value="Stable">Stable</option>
-                          <option value="Fluctuating">Fluctuating</option>
-                          <option value="Frequent Outages">Frequent Outages</option>
-                        </select>
-                      </div>
-
-                      <div className="form-group">
-                        <label htmlFor="ac" className="form-label">AC Status *</label>
-                        <select
-                          id="ac"
-                          name="ac"
-                          className="form-input form-select"
-                          value={formData.ac || ''}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select</option>
-                          <option value="Working">Working</option>
-                          <option value="Not Working">Not Working</option>
-                          <option value="Partially Working">Partially Working</option>
-                        </select>
-                      </div>
-
-                      <div className="form-group">
-                        <label htmlFor="temperature" className="form-label">Temperature (°C) *</label>
-                        <input
-                          type="number"
-                          id="temperature"
-                          name="temperature"
-                          className="form-input"
-                          value={formData.temperature || ''}
-                          onChange={handleChange}
-                          placeholder="Enter temperature"
-                          min="0"
-                          max="50"
-                        />
-                      </div>
-
-                      <div className="form-group">
-                        <label htmlFor="mikeCondition" className="form-label">Mike/Speaker Condition *</label>
-                        <select
-                          id="mikeCondition"
-                          name="mikeCondition"
-                          className="form-input form-select"
-                          value={formData.mikeCondition || ''}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select</option>
-                          <option value="Good">Good</option>
-                          <option value="Needs Repair">Needs Repair</option>
-                          <option value="Not Available">Not Available</option>
-                        </select>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Other Suggestions - Common for all location types */}
-                  <div className="form-group">
-                    <label htmlFor="otherSuggestions" className="form-label">Other Suggestions / Additional Comments</label>
-                    <textarea
-                      id="otherSuggestions"
-                      name="otherSuggestions"
-                      className="form-input form-textarea"
-                      value={formData.otherSuggestions || ''}
-                      onChange={handleChange}
-                      placeholder="Add any other observations, suggestions, or recommendations..."
-                      rows="3"
-                    ></textarea>
+                  {/* Section 7: Additional Issue Details */}
+                  <div className="form-section">
+                    <h3 className="section-title">7. Additional Issue Details</h3>
+                    <div className="form-group">
+                      <label htmlFor="otherSuggestions" className="form-label">Other Issue / Suggestions</label>
+                      <textarea
+                        id="otherSuggestions"
+                        name="otherSuggestions"
+                        className="form-input form-textarea"
+                        value={formData.otherSuggestions || ''}
+                        onChange={handleChange}
+                        placeholder="Add any other observations, suggestions, or recommendations... (e.g., Broken desk, AC noise problem, Projector cable issue)"
+                        rows="3"
+                      ></textarea>
+                    </div>
                   </div>
                 </div>
               )}
@@ -969,27 +1032,41 @@ function DataCollector({ userName, onLogout }) {
                           const problems = [];
                           const data = issue.data;
                           
-                          // Check for not working items
-                          if (data.projector === 'Not Working') problems.push('📽️ Projector not working');
-                          if (data.ac === 'Not Working') problems.push('❄️ AC not working');
-                          if (data.ac === 'Partially Working') problems.push('❄️ AC partially working');
-                          if (data.whiteboard === 'Poor') problems.push('📝 Whiteboard in poor condition');
-                          if (data.lights === 'Not Working') problems.push('💡 Lights not working');
-                          if (data.lights === 'Partial') problems.push('💡 Lights partially working');
-                          if (data.fans === 'Not Working') problems.push('🌀 Fans not working');
-                          if (data.fans === 'Partial') problems.push('🌀 Fans partially working');
-                          if (data.powerSupply === 'Fluctuating') problems.push('⚡ Power supply fluctuating');
-                          if (data.powerSupply === 'Frequent Outages') problems.push('⚡ Frequent power outages');
-                          if (data.systemPc === 'Not Working') problems.push('💻 System/PC not working');
-                          if (data.systemPc === 'Not Available') problems.push('💻 System/PC not available');
-                          if (data.junctionBox === 'Needs Attention') problems.push('⚠️ Junction box needs attention');
-                          if (data.junctionBox === 'Unsafe') problems.push('🚨 Junction box unsafe');
-                          if (data.seatsAvailability && data.seatsAvailability < 10) problems.push(`📺 Limited seats: ${data.seatsAvailability} available`);
-                          if (data.mikeCondition === 'Needs Repair') problems.push('🎤 Mike/Speaker needs repair');
-                          if (data.mikeCondition === 'Not Available') problems.push('🎤 Mike/Speaker not available');
-                          if (data.whiteboards === 'Fair') problems.push('📝 Whiteboards in fair condition');
-                          if (data.whiteboards === 'Poor') problems.push('📝 Whiteboards in poor condition');
-                          if (data.temperature && data.temperature > 30) problems.push(`🌡️ High temperature: ${data.temperature}°C`);
+                          // Infrastructure Issues
+                          if (data.whiteboardNeedsCleaning) problems.push('📝 Whiteboard needs cleaning');
+                          if (data.whiteboardDamaged) problems.push('📝 Whiteboard damaged');
+                          if (data.brokenChairs) problems.push('🪑 Broken chairs');
+                          if (data.damagedTables) problems.push('📦 Damaged tables');
+                          
+                          // Digital Equipment Issues
+                          if (data.systemSlowPerformance) problems.push('💻 System slow performance');
+                          if (data.systemNotWorking) problems.push('💻 System/PC not working');
+                          if (data.projectorNotWorking) problems.push('📽️ Projector not working');
+                          if (data.projectorNotAvailable) problems.push('📽️ Projector not available');
+                          if (data.slowInternet) problems.push('🌐 Slow internet');
+                          if (data.noInternet) problems.push('🌐 No internet');
+                          
+                          // Environmental Issues
+                          if (data.temperatureTooHot) problems.push('🌡️ Temperature too hot');
+                          if (data.temperatureTooCold) problems.push('❄️ Temperature too cold');
+                          if (data.dustyEnvironment) problems.push('💨 Dusty environment');
+                          if (data.poorVentilation) problems.push('💨 Poor ventilation');
+                          
+                          // Electrical & Power Issues
+                          if (data.powerSupplyFluctuating) problems.push('⚡ Power supply fluctuating');
+                          if (data.powerFailure) problems.push('⚡ Power failure');
+                          if (data.acNotWorking) problems.push('❄️ AC not working');
+                          if (data.dimLighting) problems.push('💡 Dim lighting');
+                          if (data.lightingNotWorking) problems.push('💡 Lighting not working');
+                          if (data.fanNotWorking) problems.push('🌀 Fan not working');
+                          if (data.junctionBoxExtraAvailable) problems.push('📦 Junction box extra available');
+                          if (data.junctionBoxDamaged) problems.push('🚨 Junction box damaged');
+                          
+                          // Safety Issues
+                          if (data.fireEquipmentNotAvailable) problems.push('🔥 Fire equipment not available');
+                          if (data.exitBlocked) problems.push('🚪 Emergency exit blocked');
+                          if (data.looseWires) problems.push('⚠️ Loose wires');
+                          if (data.damagedSwitches) problems.push('⚠️ Damaged switches');
                           
                           if (problems.length > 0) {
                             return problems.map((p, i) => <p key={i} style={{ margin: '3px 0', color: '#e74c3c' }}>{p}</p>);
