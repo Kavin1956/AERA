@@ -554,7 +554,7 @@ function Manager({ userName, onLogout }) {
         <div className="modal-overlay" onClick={() => setShowDetails(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Issue ID: {selectedIssue._id?.slice(-6).toUpperCase()}</h3>
+              <h3>Issue ID: {selectedIssue._id}</h3>
               <button className="close-btn" onClick={() => setShowDetails(false)}>×</button>
             </div>
 
