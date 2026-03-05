@@ -448,7 +448,7 @@ function Manager({ userName, onLogout }) {
                           <td>
                             Block {issue.block}, Floor {issue.floor}, Room {issue.roomNumber}
                           </td>
-                          <td>{issue.name || issue.submittedBy?.username || 'Unknown'}</td>
+                          <td>{issue.name || issue.submittedBy?.username || (issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector')}</td>
                           <td>{issue.locationCategory}</td>
                           <td>
                             <span className={`priority-badge priority-${issue.priority}`}>
@@ -516,7 +516,7 @@ function Manager({ userName, onLogout }) {
                         <td>
                           Block {issue.block}, Floor {issue.floor}, Room {issue.roomNumber}
                         </td>
-                        <td>{issue.name || issue.submittedBy?.username || 'Unknown'}</td>
+                        <td>{issue.name || issue.submittedBy?.username || (issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector')}</td>
                         <td>{issue.locationCategory}</td>
                         <td>
                           <span className="priority-badge">{issue.priority || 'medium'}</span>
@@ -567,7 +567,7 @@ function Manager({ userName, onLogout }) {
                   {selectedIssue.userType === 'student' && (
                     <>
                       <p><strong>Type:</strong> Student</p>
-                      <p><strong>Name:</strong> {selectedIssue.data?.name || selectedIssue.name || 'Unknown'}</p>
+                      <p><strong>Name:</strong> {selectedIssue.data?.name || selectedIssue.name || 'Student'}</p>
                       <p><strong>Roll Number:</strong> {selectedIssue.data?.rollNumber || selectedIssue.rollNumber || 'Not provided'}</p>
                       <p><strong>Department:</strong> {selectedIssue.data?.dept || selectedIssue.dept || 'Not provided'}</p>
                       <p><strong>Email:</strong> {selectedIssue.data?.email || selectedIssue.submittedBy?.email || 'Not provided'}</p>
@@ -577,7 +577,7 @@ function Manager({ userName, onLogout }) {
                   {selectedIssue.userType === 'faculty' && (
                     <>
                       <p><strong>Type:</strong> Faculty</p>
-                      <p><strong>Name:</strong> {selectedIssue.data?.name || selectedIssue.name || 'Unknown'}</p>
+                      <p><strong>Name:</strong> {selectedIssue.data?.name || selectedIssue.name || 'Faculty'}</p>
                       <p><strong>Faculty ID:</strong> {selectedIssue.data?.facultyId || selectedIssue.facultyId || 'Not provided'}</p>
                       <p><strong>Email:</strong> {selectedIssue.data?.email || selectedIssue.submittedBy?.email || 'Not provided'}</p>
                     </>
@@ -586,7 +586,7 @@ function Manager({ userName, onLogout }) {
                   {selectedIssue.userType === 'data_collector' && (
                     <>
                       <p><strong>Type:</strong> Data Collector</p>
-                      <p><strong>Name:</strong> {selectedIssue.data?.name || selectedIssue.name || 'Unknown'}</p>
+                      <p><strong>Name:</strong> {selectedIssue.data?.name || selectedIssue.name || 'Data Collector'}</p>
                       <p><strong>ID:</strong> {selectedIssue.data?.collectorId || selectedIssue.collectorId || 'Not provided'}</p>
                       <p><strong>Email:</strong> {selectedIssue.data?.email || selectedIssue.submittedBy?.email || 'Not provided'}</p>
                     </>
