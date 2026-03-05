@@ -301,35 +301,35 @@
 
 .priority-badge.priority-1 {
   background: #ffcdd2;
-  color: #8b0000;
+  color: #000000;
   border: 1px solid #ef5350;
   font-weight: 800;
 }
 
 .priority-badge.priority-2 {
   background: #ffe0b2;
-  color: #994500;
+  color: #000000;
   border: 1px solid #ffb74d;
   font-weight: 800;
 }
 
 .priority-badge.priority-3 {
   background: #fff9c4;
-  color: #996600;
+  color: #000000;
   border: 1px solid #fbc02d;
   font-weight: 800;
 }
 
 .priority-badge.priority-4 {
   background: #e1bee7;
-  color: #2d0050;
+  color: #000000;
   border: 1px solid #ce93d8;
   font-weight: 800;
 }
 
 .priority-badge.priority-5 {
   background: #cfd8dc;
-  color: #0d004d;
+  color: #000000;
   border: 1px solid #90a4ae;
   font-weight: 800;
 }
