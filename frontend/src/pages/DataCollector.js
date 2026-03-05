@@ -1061,9 +1061,6 @@ function DataCollector({ userName, onLogout }) {
                       {issue.timestamps?.submitted ? new Date(issue.timestamps.submitted).toLocaleString() : 'Just now'}
                     </p>
                     <p className="issue-info">
-                      <strong>Reported by:</strong> {issue.submittedBy?.fullName || 'System'}
-                    </p>
-                    <p className="issue-info">
                       <strong>Location:</strong> {issue.block} Block, {issue.floor}, Room {issue.roomNumber}
                     </p>
                     <p className="issue-info">
