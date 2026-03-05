@@ -387,6 +387,16 @@ function Technician({ userName, onLogout }) {
                               )}
                             </>
                           );
+                        } else if (data.otherSuggestions) {
+                          return (
+                            <>
+                              <p style={{ margin: '5px 0', color: '#27ae60' }}>✓ No specific issues detected</p>
+                              <>
+                                <p style={{ margin: '8px 0 3px 0', color: '#2c3e50', fontWeight: '500' }}>📋 Additional Issue Details:</p>
+                                <p style={{ margin: '3px 0', color: '#555', fontStyle: 'italic' }}>{data.otherSuggestions}</p>
+                              </>
+                            </>
+                          );
                         } else {
                           return <p style={{ margin: '5px 0', color: '#27ae60' }}>✓ No specific issues - all systems functioning normally</p>;
                         }

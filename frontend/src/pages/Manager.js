@@ -199,7 +199,11 @@ function Manager({ userName, onLogout }) {
 
     // Weekly analysis - issues from last 7 days
     const sevenDaysAgo = new Date(new Date().setDate(new Date().getDate() - 7));
-    const weeklyIssues = issues.filter(i => i.submittedTimestamp >= sevenDaysAgo);
+    const weeklyIssues = issues.filter(i => {
+      if (!i.timestamps?.submitted) return false;
+      const submittedDate = new Date(i.timestamps.submitted);
+      return submittedDate >= sevenDaysAgo;
+    });
 
     // Count by technician/issue type
     const countsByType = issues.reduce((acc, it) => {
@@ -207,6 +211,15 @@ function Manager({ userName, onLogout }) {
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
+
+    // Debug logging
+    if (process.env.REACT_APP_DEBUG === 'true') {
+      console.log('📊 Analytics Debug:');
+      console.log('  Total issues:', total);
+      console.log('  7 days ago:', sevenDaysAgo);
+      console.log('  Weekly issues:', weeklyIssues.length);
+      console.log('  Issues with timestamps:', issues.filter(i => i.timestamps?.submitted).length);
+    }
 
     setAnalyticsData({
       submitted,
@@ -216,11 +229,11 @@ function Manager({ userName, onLogout }) {
       weeklyTotal: weeklyIssues.length,
       countsByType,
       weeklyByPriority: {
-        1: weeklyIssues.filter(i => i.priority === 1).length,
-        2: weeklyIssues.filter(i => i.priority === 2).length,
-        3: weeklyIssues.filter(i => i.priority === 3).length,
-        4: weeklyIssues.filter(i => i.priority === 4).length,
-        5: weeklyIssues.filter(i => i.priority === 5).length
+        1: weeklyIssues.filter(i => i.technicianType === 'electrical').length,
+        2: weeklyIssues.filter(i => i.technicianType === 'it_system').length,
+        3: weeklyIssues.filter(i => i.technicianType === 'maintenance').length,
+        4: weeklyIssues.filter(i => i.technicianType === 'safety').length,
+        5: weeklyIssues.filter(i => i.technicianType === 'general_support').length
       }
     });
   }, [issues]);
@@ -664,6 +677,16 @@ function Manager({ userName, onLogout }) {
                                   <p style={{ margin: '3px 0', color: '#555', fontStyle: 'italic' }}>{data.otherSuggestions}</p>
                                 </>
                               )}
+                            </>
+                          );
+                        } else if (data.otherSuggestions) {
+                          return (
+                            <>
+                              <p style={{ margin: '5px 0', color: '#27ae60' }}>✓ No specific issues detected</p>
+                              <>
+                                <p style={{ margin: '8px 0 3px 0', color: '#2c3e50', fontWeight: '500' }}>📋 Additional Issue Details:</p>
+                                <p style={{ margin: '3px 0', color: '#555', fontStyle: 'italic' }}>{data.otherSuggestions}</p>
+                              </>
                             </>
                           );
                         } else {
