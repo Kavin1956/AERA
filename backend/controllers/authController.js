@@ -134,7 +134,7 @@ exports.login = async (req, res) => {
     // ✅ ENFORCE ACCOUNT RESTRICTIONS
     const ALLOWED_ACCOUNTS = {
       manager: ['manager_alice'],
-      technician: ['tech_water_bob', 'tech_elec_charlie', 'tech_clean_diana', 'tech_others_evan']
+      technician: ['tech_electrical_bob', 'tech_it_charlie', 'tech_maintenance_diana', 'tech_safety_evan', 'tech_support_frank']
     };
 
     if (user.role === 'manager' && !ALLOWED_ACCOUNTS.manager.includes(username)) {
@@ -198,48 +198,49 @@ exports.seedAccounts = async (req, res) => {
         role: 'manager'
       },
 
-      // 4 Technicians
+      // 5 Technicians with new types
       {
-        fullName: 'Bob Water Technician',
-        email: 'tech_water@aera.edu',
-        username: 'tech_water_bob',
-        password: await hashPassword('waterpass123'),
+        fullName: 'Bob Electrical Technician',
+        email: 'tech_electrical@aera.edu',
+        username: 'tech_electrical_bob',
+        password: await hashPassword('electricalpass123'),
         role: 'technician',
-        technicianType: 'water'
+        technicianType: 'electrical'
       },
       {
-        fullName: 'Charlie Electrician',
-        email: 'tech_electric@aera.edu',
-        username: 'tech_elec_charlie',
-        password: await hashPassword('electpass123'),
+        fullName: 'Charlie IT Technician',
+        email: 'tech_it@aera.edu',
+        username: 'tech_it_charlie',
+        password: await hashPassword('itpass123'),
         role: 'technician',
-        technicianType: 'electricity'
+        technicianType: 'it_system'
       },
       {
-        fullName: 'Diana Cleaning Technician',
-        email: 'tech_clean@aera.edu',
-        username: 'tech_clean_diana',
-        password: await hashPassword('cleanpass123'),
+        fullName: 'Diana Maintenance Technician',
+        email: 'tech_maintenance@aera.edu',
+        username: 'tech_maintenance_diana',
+        password: await hashPassword('maintenancepass123'),
         role: 'technician',
-        technicianType: 'cleaning'
+        technicianType: 'maintenance'
       },
       {
-        fullName: 'Evan General Technician',
-        email: 'tech_others@aera.edu',
-        username: 'tech_others_evan',
-        password: await hashPassword('otherspass123'),
+        fullName: 'Evan Safety Technician',
+        email: 'tech_safety@aera.edu',
+        username: 'tech_safety_evan',
+        password: await hashPassword('safetypass123'),
         role: 'technician',
-        technicianType: 'others'
+        technicianType: 'safety'
+      },
+      {
+        fullName: 'Frank General Support Technician',
+        email: 'tech_support@aera.edu',
+        username: 'tech_support_frank',
+        password: await hashPassword('supportpass123'),
+        role: 'technician',
+        technicianType: 'general_support'
       },
 
       // 3 Data Collectors
-      {
-        fullName: 'Frank Data Collector',
-        email: 'dc_frank@aera.edu',
-        username: 'dc_frank',
-        password: await hashPassword('dcpass123'),
-        role: 'data_collector'
-      },
       {
         fullName: 'Grace Data Collector',
         email: 'dc_grace@aera.edu',
@@ -248,9 +249,16 @@ exports.seedAccounts = async (req, res) => {
         role: 'data_collector'
       },
       {
-        fullName: 'Henry Data Collector',
-        email: 'dc_henry@aera.edu',
-        username: 'dc_henry',
+        fullName: 'Hannah Data Collector',
+        email: 'dc_hannah@aera.edu',
+        username: 'dc_hannah',
+        password: await hashPassword('dcpass123'),
+        role: 'data_collector'
+      },
+      {
+        fullName: 'Isaac Data Collector',
+        email: 'dc_isaac@aera.edu',
+        username: 'dc_isaac',
         password: await hashPassword('dcpass123'),
         role: 'data_collector'
       }
@@ -264,15 +272,16 @@ exports.seedAccounts = async (req, res) => {
       accounts: {
         manager: { username: 'manager_alice', password: 'managerpass123' },
         technicians: [
-          { username: 'tech_water_bob', password: 'waterpass123', type: 'water' },
-          { username: 'tech_elec_charlie', password: 'electpass123', type: 'electricity' },
-          { username: 'tech_clean_diana', password: 'cleanpass123', type: 'cleaning' },
-          { username: 'tech_others_evan', password: 'otherspass123', type: 'others' }
+          { username: 'tech_electrical_bob', password: 'electricalpass123', type: 'electrical', handles: 'Power, lights, fans, junction box' },
+          { username: 'tech_it_charlie', password: 'itpass123', type: 'it_system', handles: 'PC, projector, internet' },
+          { username: 'tech_maintenance_diana', password: 'maintenancepass123', type: 'maintenance', handles: 'Furniture, whiteboard' },
+          { username: 'tech_safety_evan', password: 'safetypass123', type: 'safety', handles: 'Fire safety, emergency exit' },
+          { username: 'tech_support_frank', password: 'supportpass123', type: 'general_support', handles: 'Other / additional issues' }
         ],
         dataCollectors: [
-          { username: 'dc_frank', password: 'dcpass123' },
           { username: 'dc_grace', password: 'dcpass123' },
-          { username: 'dc_henry', password: 'dcpass123' }
+          { username: 'dc_hannah', password: 'dcpass123' },
+          { username: 'dc_isaac', password: 'dcpass123' }
         ]
       }
     });
@@ -289,10 +298,11 @@ exports.fixTechnicians = async (req, res) => {
 
     // Define correct technician types
     const TECHNICIAN_MAPPING = {
-      'tech_water_bob': 'water',
-      'tech_elec_charlie': 'electricity',
-      'tech_clean_diana': 'cleaning',
-      'tech_others_evan': 'others'
+      'tech_electrical_bob': 'electrical',
+      'tech_it_charlie': 'it_system',
+      'tech_maintenance_diana': 'maintenance',
+      'tech_safety_evan': 'safety',
+      'tech_support_frank': 'general_support'
     };
 
     // Find technicians with undefined technicianType

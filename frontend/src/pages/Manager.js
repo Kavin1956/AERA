@@ -6,10 +6,11 @@ import { issueAPI } from '../services/api';
 function Manager({ userName, onLogout }) {
   // Available technician types
   const TECHNICIAN_TYPES = {
-    'water': 'Water Management',
-    'electricity': 'Electricity',
-    'cleaning': 'Cleaning',
-    'others': 'Others'
+    'electrical': 'Electrical Technician',
+    'it_system': 'IT / System Technician',
+    'maintenance': 'Maintenance Technician',
+    'safety': 'Safety Technician',
+    'general_support': 'General Support Technician'
   };
 
   const [issues, setIssues] = useState([]);
@@ -29,6 +30,9 @@ function Manager({ userName, onLogout }) {
 
   // Fetch issues from backend on mount and auto-refresh every 5 seconds
   useEffect(() => {
+    // Use ref to track previous count without triggering effect re-runs
+    let previousCountRef = previousIssueCount;
+    
     const fetchIssues = async () => {
       try {
         // Verify token is still valid
@@ -51,12 +55,13 @@ function Manager({ userName, onLogout }) {
         
         // Detect new issues
         const currentCount = (response.data || []).length;
-        if (currentCount > previousIssueCount && previousIssueCount > 0) {
-          const newCount = currentCount - previousIssueCount;
+        if (currentCount > previousCountRef && previousCountRef > 0) {
+          const newCount = currentCount - previousCountRef;
           setNewIssueAlert(`✨ ${newCount} new issue(s) submitted!`);
           // Clear notification after 5 seconds
           setTimeout(() => setNewIssueAlert(''), 5000);
         }
+        previousCountRef = currentCount;
         setPreviousIssueCount(currentCount);
       } catch (err) {
         console.error('❌ Fetch issues error:', err.response?.data || err.message);
@@ -86,6 +91,7 @@ function Manager({ userName, onLogout }) {
     return () => {
       clearInterval(interval);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency - run only on mount
 
   // Handle page visibility - refresh when tab becomes active
@@ -348,23 +354,23 @@ function Manager({ userName, onLogout }) {
                 <p className="value">{analyticsData.weeklyTotal}</p>
               </div>
               <div className="analysis-card priority-1">
-                <p className="label">🚨 Water Issues</p>
+                <p className="label">⚡ Electrical Issues</p>
                 <p className="value">{analyticsData.weeklyByPriority?.[1] || 0}</p>
               </div>
               <div className="analysis-card priority-2">
-                <p className="label">📽️ Projector Issues</p>
+                <p className="label">💻 IT / System Issues</p>
                 <p className="value">{analyticsData.weeklyByPriority?.[2] || 0}</p>
               </div>
               <div className="analysis-card priority-3">
-                <p className="label">⚡ Electricity Issues</p>
+                <p className="label">🔧 Maintenance Issues</p>
                 <p className="value">{analyticsData.weeklyByPriority?.[3] || 0}</p>
               </div>
               <div className="analysis-card priority-4">
-                <p className="label">🧹 Cleaning Issues</p>
+                <p className="label">🚨 Safety Issues</p>
                 <p className="value">{analyticsData.weeklyByPriority?.[4] || 0}</p>
               </div>
               <div className="analysis-card priority-5">
-                <p className="label">📌 Others</p>
+                <p className="label">👥 General Support</p>
                 <p className="value">{analyticsData.weeklyByPriority?.[5] || 0}</p>
               </div>
             </div>
@@ -450,7 +456,7 @@ function Manager({ userName, onLogout }) {
                             </span>
                           </td>
                           <td>
-                            <span className="tech-badge">{issue.technicianType || 'Pending'}</span>
+                            <span className="tech-badge">{getTechnicianTypeDisplay(issue.technicianType) || 'Pending'}</span>
                           </td>
                           <td>
                             <span className={`status-badge status-${issue.status}`}>
@@ -609,32 +615,56 @@ function Manager({ userName, onLogout }) {
                         const problems = [];
                         const data = selectedIssue.data;
                         
-                        // Check for not working items
-                        if (data.projector === 'Not Working') problems.push('📽️ Projector not working');
-                        if (data.ac === 'Not Working') problems.push('❄️ AC not working');
-                        if (data.ac === 'Partially Working') problems.push('❄️ AC partially working');
-                        if (data.whiteboard === 'Poor') problems.push('📝 Whiteboard in poor condition');
-                        if (data.lights === 'Not Working') problems.push('💡 Lights not working');
-                        if (data.lights === 'Partial') problems.push('💡 Lights partially working');
-                        if (data.fans === 'Not Working') problems.push('🌀 Fans not working');
-                        if (data.fans === 'Partial') problems.push('🌀 Fans partially working');
-                        if (data.powerSupply === 'Fluctuating') problems.push('⚡ Power supply fluctuating');
-                        if (data.powerSupply === 'Frequent Outages') problems.push('⚡ Frequent power outages');
-                        if (data.systemPc === 'Not Working') problems.push('💻 System/PC not working');
-                        if (data.systemPc === 'Not Available') problems.push('💻 System/PC not available');
-                        if (data.junctionBox === 'Needs Attention') problems.push('⚠️ Junction box needs attention');
-                        if (data.junctionBox === 'Unsafe') problems.push('🚨 Junction box unsafe');
-                        if (data.seatsAvailability && data.seatsAvailability < 10) problems.push(`📺 Limited seats: ${data.seatsAvailability} available`);
-                        if (data.mikeCondition === 'Needs Repair') problems.push('🎤 Mike/Speaker needs repair');
-                        if (data.mikeCondition === 'Not Available') problems.push('🎤 Mike/Speaker not available');
-                        if (data.whiteboards === 'Fair') problems.push('📝 Whiteboards in fair condition');
-                        if (data.whiteboards === 'Poor') problems.push('📝 Whiteboards in poor condition');
-                        if (data.temperature && data.temperature > 30) problems.push(`🌡️ High temperature: ${data.temperature}°C`);
+                        // Infrastructure Issues
+                        if (data.whiteboardNeedsCleaning) problems.push('📝 Whiteboard needs cleaning');
+                        if (data.whiteboardDamaged) problems.push('📝 Whiteboard damaged');
+                        if (data.brokenChairs) problems.push('🪑 Broken chairs');
+                        if (data.damagedTables) problems.push('📦 Damaged tables');
+                        
+                        // Digital Equipment Issues
+                        if (data.systemSlowPerformance) problems.push('💻 System slow performance');
+                        if (data.systemNotWorking) problems.push('💻 System/PC not working');
+                        if (data.projectorNotWorking) problems.push('📽️ Projector not working');
+                        if (data.projectorNotAvailable) problems.push('📽️ Projector not available');
+                        if (data.slowInternet) problems.push('🌐 Slow internet');
+                        if (data.noInternet) problems.push('🌐 No internet');
+                        
+                        // Environmental Issues
+                        if (data.temperatureTooHot) problems.push('🌡️ Temperature too hot');
+                        if (data.temperatureTooCold) problems.push('❄️ Temperature too cold');
+                        if (data.dustyEnvironment) problems.push('💨 Dusty environment');
+                        if (data.poorVentilation) problems.push('💨 Poor ventilation');
+                        
+                        // Electrical & Power Issues
+                        if (data.powerSupplyFluctuating) problems.push('⚡ Power supply fluctuating');
+                        if (data.powerFailure) problems.push('⚡ Power failure');
+                        if (data.acNotWorking) problems.push('❄️ AC not working');
+                        if (data.dimLighting) problems.push('💡 Dim lighting');
+                        if (data.lightingNotWorking) problems.push('💡 Lighting not working');
+                        if (data.fanNotWorking) problems.push('🌀 Fan not working');
+                        if (data.junctionBoxExtraAvailable) problems.push('📦 Junction box extra available');
+                        if (data.junctionBoxDamaged) problems.push('🚨 Junction box damaged');
+                        
+                        // Safety Issues
+                        if (data.fireEquipmentNotAvailable) problems.push('🔥 Fire equipment not available');
+                        if (data.exitBlocked) problems.push('🚪 Emergency exit blocked');
+                        if (data.looseWires) problems.push('⚠️ Loose wires');
+                        if (data.damagedSwitches) problems.push('⚠️ Damaged switches');
                         
                         if (problems.length > 0) {
-                          return problems.map((p, i) => <p key={i} style={{ margin: '5px 0' }}>{p}</p>);
+                          return (
+                            <>
+                              {problems.map((p, i) => <p key={i} style={{ margin: '5px 0', color: '#e74c3c' }}>{p}</p>)}
+                              {data.otherSuggestions && (
+                                <>
+                                  <p style={{ margin: '8px 0 3px 0', color: '#2c3e50', fontWeight: '500' }}>📋 Additional Comments:</p>
+                                  <p style={{ margin: '3px 0', color: '#555', fontStyle: 'italic' }}>{data.otherSuggestions}</p>
+                                </>
+                              )}
+                            </>
+                          );
                         } else {
-                          return <p style={{ margin: '5px 0', color: '#666' }}>No specific problems reported - all systems functioning normally</p>;
+                          return <p style={{ margin: '5px 0', color: '#27ae60' }}>✓ No specific issues - all systems functioning normally</p>;
                         }
                       })()}
                     </div>
@@ -684,10 +714,11 @@ function Manager({ userName, onLogout }) {
                       className="form-input form-select"
                     >
                       <option value="">Select technician type...</option>
-                      <option value="water">Water Management</option>
-                      <option value="electricity">Electricity</option>
-                      <option value="cleaning">Cleaning</option>
-                      <option value="others">Others</option>
+                      <option value="electrical">Electrical Technician</option>
+                      <option value="it_system">IT / System Technician</option>
+                      <option value="maintenance">Maintenance Technician</option>
+                      <option value="safety">Safety Technician</option>
+                      <option value="general_support">General Support Technician</option>
                     </select>
                   </div>
                 </div>

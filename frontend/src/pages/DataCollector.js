@@ -182,44 +182,85 @@ function DataCollector({ userName, onLogout }) {
     // Priority based on condition and detected issues
     const severity = formData.condition?.toLowerCase();
     let priority = 'Low'; // Default: Low priority
-    let technicianType = 'others';
+    let technicianType = 'general_support';
 
-    // Critical/Safety issues -> High priority
+    // Critical/Safety issues -> High priority -> Safety Technician
     if (formData.exitBlocked || formData.looseWires || formData.damagedSwitches || 
         formData.fireEquipmentNotAvailable) {
       priority = 'High';
-      technicianType = 'electricity';
+      technicianType = 'safety';
     }
-    // Projector problems -> High priority
-    else if (formData.projectorNotWorking) {
-      priority = 'High';
-      technicianType = 'electricity';
-    }
-    // Power/Electricity issues -> High priority
+    // Electrical issues (Power/AC/Lighting) -> High priority -> Electrical Technician
     else if (formData.powerFailure || formData.powerSupplyFluctuating || 
-             formData.acNotWorking) {
+             formData.acNotWorking || formData.lightingNotWorking || formData.dimLighting ||
+             formData.fanNotWorking) {
       priority = 'High';
-      technicianType = 'electricity';
+      technicianType = 'electrical';
     }
-    // System/PC not working -> High priority
-    else if (formData.systemNotWorking) {
+    // System/PC or Projector issues -> High priority -> IT / System Technician
+    else if (formData.systemNotWorking || formData.projectorNotWorking || 
+             formData.systemSlowPerformance || formData.slowInternet || formData.noInternet ||
+             formData.projectorNotAvailable) {
       priority = 'High';
-      technicianType = 'electricity';
+      technicianType = 'it_system';
     }
-    // Environmental/Comfort issues -> Medium priority
-    else if (formData.temperatureTooHot || formData.temperatureTooCold ||
-             formData.dustyEnvironment || formData.poorVentilation) {
-      priority = 'Medium';
-      technicianType = 'hvac';
-    }
-    // Infrastructure issues -> Medium priority
+    // Infrastructure issues -> Medium priority -> Maintenance Technician
     else if (formData.brokenChairs || formData.damagedTables ||
-             formData.whiteboardDamaged) {
+             formData.whiteboardDamaged || formData.whiteboardNeedsCleaning ||
+             formData.junctionBoxDamaged) {
       priority = 'Medium';
       technicianType = 'maintenance';
     }
+    // Environmental/Comfort issues -> Low priority -> General Support Technician
+    else if (formData.temperatureTooHot || formData.temperatureTooCold ||
+             formData.dustyEnvironment || formData.poorVentilation) {
+      priority = 'Low';
+      technicianType = 'general_support';
+    }
 
     return { priority, technicianType };
+  };
+
+  const getReportedIssues = () => {
+    const issues = [];
+    
+    // Infrastructure Issues
+    if (formData.whiteboardNeedsCleaning) issues.push('Whiteboard Needs Cleaning');
+    if (formData.whiteboardDamaged) issues.push('Whiteboard Damaged');
+    if (formData.brokenChairs) issues.push('Broken Chairs');
+    if (formData.damagedTables) issues.push('Damaged Tables');
+    
+    // Digital Equipment Issues
+    if (formData.systemSlowPerformance) issues.push('System Slow Performance');
+    if (formData.systemNotWorking) issues.push('System Not Working');
+    if (formData.projectorNotWorking) issues.push('Projector Not Working');
+    if (formData.projectorNotAvailable) issues.push('Projector Not Available');
+    if (formData.slowInternet) issues.push('Slow Internet');
+    if (formData.noInternet) issues.push('No Internet');
+    
+    // Environmental Issues
+    if (formData.temperatureTooHot) issues.push('Temperature Too Hot');
+    if (formData.temperatureTooCold) issues.push('Temperature Too Cold');
+    if (formData.dustyEnvironment) issues.push('Dusty Environment');
+    if (formData.poorVentilation) issues.push('Poor Ventilation');
+    
+    // Electrical & Power Issues
+    if (formData.powerSupplyFluctuating) issues.push('Power Supply Fluctuating');
+    if (formData.powerFailure) issues.push('Power Failure');
+    if (formData.acNotWorking) issues.push('AC Not Working');
+    if (formData.dimLighting) issues.push('Dim Lighting');
+    if (formData.lightingNotWorking) issues.push('Lighting Not Working');
+    if (formData.fanNotWorking) issues.push('Fan Not Working');
+    if (formData.junctionBoxExtraAvailable) issues.push('Junction Box Extra Available');
+    if (formData.junctionBoxDamaged) issues.push('Junction Box Damaged');
+    
+    // Safety Issues
+    if (formData.fireEquipmentNotAvailable) issues.push('Fire Equipment Not Available');
+    if (formData.exitBlocked) issues.push('Emergency Exit Blocked');
+    if (formData.looseWires) issues.push('Loose Wires');
+    if (formData.damagedSwitches) issues.push('Damaged Switches');
+    
+    return issues;
   };
 
   const handleSubmit = async () => {
@@ -235,6 +276,7 @@ function DataCollector({ userName, onLogout }) {
 
     const { priority, technicianType } = calculatePriority();
     const problemLevel = calculateProblemLevel();
+    const reportedIssues = getReportedIssues();
 
     setLoading(true);
     setError('');
@@ -254,7 +296,8 @@ function DataCollector({ userName, onLogout }) {
           condition: formData.condition,
           problemLevel,
           priority,
-          technicianType
+          technicianType,
+          reportedIssues
         });
       }
 
@@ -280,7 +323,12 @@ function DataCollector({ userName, onLogout }) {
       // Immediately show the newly created issue in the UI for the submitter
       setIssues(prev => [response.data, ...(prev || [])]);
 
-      alert(`Issue submitted successfully!\nPriority: ${priority}\nProblem Level: ${problemLevel}\nTechnician Type: ${technicianType}`);
+      // Build detailed success message
+      const issuesList = reportedIssues.length > 0 
+        ? reportedIssues.map((issue, index) => `${index + 1}. ${issue}`).join('\n')
+        : 'No specific issues reported';
+      
+      alert(`Issue Submitted Successfully!\n\nOverall Condition: ${formData.condition}\n\nReported Issues:\n${issuesList}${formData.otherSuggestions ? `\n\nAdditional Comments:\n${formData.otherSuggestions}` : ''}`);
       
       // Background: still attempt to refresh from server (best-effort)
       issueAPI.getAllIssues().then(r => {
@@ -1021,6 +1069,9 @@ function DataCollector({ userName, onLogout }) {
                     <p className="issue-info">
                       <strong>Condition:</strong> {issue.condition}
                     </p>
+                    <p className="issue-info">
+                      <strong>Priority:</strong> <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>P{issue.priority}</span>
+                    </p>
                     
                     {/* Specific Issues Found */}
                     <p className="issue-info">
@@ -1069,9 +1120,19 @@ function DataCollector({ userName, onLogout }) {
                           if (data.damagedSwitches) problems.push('⚠️ Damaged switches');
                           
                           if (problems.length > 0) {
-                            return problems.map((p, i) => <p key={i} style={{ margin: '3px 0', color: '#e74c3c' }}>{p}</p>);
+                            return (
+                              <>
+                                {problems.map((p, i) => <p key={i} style={{ margin: '3px 0', color: '#e74c3c' }}>{p}</p>)}
+                                {data.otherSuggestions && (
+                                  <>
+                                    <p style={{ margin: '6px 0 3px 0', color: '#2c3e50', fontWeight: '500' }}>📋 Additional Comments:</p>
+                                    <p style={{ margin: '3px 0', color: '#555', fontStyle: 'italic' }}>{data.otherSuggestions}</p>
+                                  </>
+                                )}
+                              </>
+                            );
                           } else {
-                            return <p style={{ margin: '3px 0', color: '#27ae60' }}>✓ No issues - all systems normal</p>;
+                            return <p style={{ margin: '3px 0', color: '#27ae60' }}>✓ No specific issues - all systems normal</p>;
                           }
                         })()}
                       </div>
