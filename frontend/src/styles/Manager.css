@@ -294,43 +294,44 @@
   padding: 0.4rem 0.8rem;
   border-radius: 4px;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: capitalize;
+  text-shadow: none;
 }
 
 .priority-badge.priority-1 {
   background: #ffcdd2;
-  color: #b71c1c;
+  color: #8b0000;
   border: 1px solid #ef5350;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .priority-badge.priority-2 {
   background: #ffe0b2;
-  color: #cc5500;
+  color: #994500;
   border: 1px solid #ffb74d;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .priority-badge.priority-3 {
   background: #fff9c4;
-  color: #d4a500;
+  color: #996600;
   border: 1px solid #fbc02d;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .priority-badge.priority-4 {
   background: #e1bee7;
-  color: #4a148c;
+  color: #2d0050;
   border: 1px solid #ce93d8;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .priority-badge.priority-5 {
   background: #cfd8dc;
-  color: #1a237e;
+  color: #0d004d;
   border: 1px solid #90a4ae;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .severity-badge {
