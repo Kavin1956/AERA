@@ -197,13 +197,16 @@ function Manager({ userName, onLogout }) {
     const completed = issues.filter(i => i.status === 'completed').length;
     const total = issues.length;
 
-    // Weekly analysis - issues from last 7 days
+    // Weekly analysis - issues from last 7 days (use all issues if none are this week)
     const sevenDaysAgo = new Date(new Date().setDate(new Date().getDate() - 7));
     const weeklyIssues = issues.filter(i => {
       if (!i.timestamps?.submitted) return false;
       const submittedDate = new Date(i.timestamps.submitted);
       return submittedDate >= sevenDaysAgo;
     });
+
+    // Use weekly issues if available, otherwise use all issues for display
+    const dataSourceIssues = weeklyIssues.length > 0 ? weeklyIssues : issues;
 
     // Count by technician/issue type
     const countsByType = issues.reduce((acc, it) => {
@@ -212,28 +215,19 @@ function Manager({ userName, onLogout }) {
       return acc;
     }, {});
 
-    // Debug logging
-    if (process.env.REACT_APP_DEBUG === 'true') {
-      console.log('📊 Analytics Debug:');
-      console.log('  Total issues:', total);
-      console.log('  7 days ago:', sevenDaysAgo);
-      console.log('  Weekly issues:', weeklyIssues.length);
-      console.log('  Issues with timestamps:', issues.filter(i => i.timestamps?.submitted).length);
-    }
-
     setAnalyticsData({
       submitted,
       assigned,
       completed,
       total,
-      weeklyTotal: weeklyIssues.length,
+      weeklyTotal: dataSourceIssues.length,
       countsByType,
       weeklyByPriority: {
-        1: weeklyIssues.filter(i => i.technicianType === 'electrical').length,
-        2: weeklyIssues.filter(i => i.technicianType === 'it_system').length,
-        3: weeklyIssues.filter(i => i.technicianType === 'maintenance').length,
-        4: weeklyIssues.filter(i => i.technicianType === 'safety').length,
-        5: weeklyIssues.filter(i => i.technicianType === 'general_support').length
+        1: dataSourceIssues.filter(i => i.technicianType === 'electrical').length,
+        2: dataSourceIssues.filter(i => i.technicianType === 'it_system').length,
+        3: dataSourceIssues.filter(i => i.technicianType === 'maintenance').length,
+        4: dataSourceIssues.filter(i => i.technicianType === 'safety').length,
+        5: dataSourceIssues.filter(i => i.technicianType === 'general_support').length
       }
     });
   }, [issues]);
