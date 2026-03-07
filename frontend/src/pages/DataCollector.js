@@ -275,6 +275,48 @@ function DataCollector({ userName, onLogout }) {
     return issues;
   };
 
+  const getIssueCodes = () => {
+    const codes = [];
+    
+    // Infrastructure Issues
+    if (formData.whiteboardNeedsCleaning) codes.push('whiteboardNeedsCleaning');
+    if (formData.whiteboardDamaged) codes.push('whiteboardDamaged');
+    if (formData.brokenChairs) codes.push('brokenChairs');
+    if (formData.damagedTables) codes.push('damagedTables');
+    
+    // Digital Equipment Issues
+    if (formData.systemSlowPerformance) codes.push('systemSlowPerformance');
+    if (formData.systemNotWorking) codes.push('systemNotWorking');
+    if (formData.projectorNotWorking) codes.push('projectorNotWorking');
+    if (formData.projectorNotAvailable) codes.push('projectorNotAvailable');
+    if (formData.slowInternet) codes.push('slowInternet');
+    if (formData.noInternet) codes.push('noInternet');
+    
+    // Environmental Issues
+    if (formData.temperatureTooHot) codes.push('temperatureTooHot');
+    if (formData.temperatureTooCold) codes.push('temperatureTooCold');
+    if (formData.dustyEnvironment) codes.push('dustyEnvironment');
+    if (formData.poorVentilation) codes.push('poorVentilation');
+    
+    // Electrical & Power Issues
+    if (formData.powerSupplyFluctuating) codes.push('powerSupplyFluctuating');
+    if (formData.powerFailure) codes.push('powerFailure');
+    if (formData.acNotWorking) codes.push('acNotWorking');
+    if (formData.dimLighting) codes.push('dimLighting');
+    if (formData.lightingNotWorking) codes.push('lightingNotWorking');
+    if (formData.fanNotWorking) codes.push('fanNotWorking');
+    if (formData.junctionBoxExtraAvailable) codes.push('junctionBoxExtraAvailable');
+    if (formData.junctionBoxDamaged) codes.push('junctionBoxDamaged');
+    
+    // Safety Issues
+    if (formData.fireEquipmentNotAvailable) codes.push('fireEquipmentNotAvailable');
+    if (formData.exitBlocked) codes.push('exitBlocked');
+    if (formData.looseWires) codes.push('looseWires');
+    if (formData.damagedSwitches) codes.push('damagedSwitches');
+    
+    return codes;
+  };
+
   const handleSubmit = async () => {
     if (!validateStep4()) return;
 
@@ -315,18 +357,31 @@ function DataCollector({ userName, onLogout }) {
 
       const issueData = {
         userType,
-        locationCategory,
-        block: formData.block,
-        floor: formData.floor,
-        roomNumber: formData.roomNumber,
+        location: {
+          category: locationCategory,
+          block: formData.block,
+          floor: formData.floor,
+          roomNumber: formData.roomNumber
+        },
+        reporter: {
+          name: formData.name,
+          email: formData.email,
+          rollNumber: formData.rollNumber,
+          year: formData.year,
+          dept: formData.dept
+        },
         condition: formData.condition,
         problemLevel,
         otherSuggestions: formData.otherSuggestions,
         specificIssues: reportedIssues, // Array of specific issues found
+        issues: getIssueCodes(), // Array of issue codes (e.g., ["slowInternet", "projectorNotWorking"])
         data: formData,
         priority,
         technicianType,
-        status: 'submitted'
+        status: 'submitted',
+        timestamps: {
+          submitted: new Date()
+        }
       };
 
       // Send to backend API
@@ -1081,7 +1136,7 @@ function DataCollector({ userName, onLogout }) {
                       {issue.timestamps?.submitted ? new Date(issue.timestamps.submitted).toLocaleString() : 'Just now'}
                     </p>
                     <p className="issue-info">
-                      <strong>Location:</strong> {issue.block} Block, {issue.floor}, Room {issue.roomNumber || 'N/A'}
+                      <strong>Location:</strong> {issue.location?.block} Block, {issue.location?.floor}, Room {issue.location?.roomNumber || 'N/A'}
                     </p>
                     <p className="issue-info">
                       <strong>Condition:</strong> {issue.condition}

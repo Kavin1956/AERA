@@ -7,10 +7,21 @@ const issueSchema = new mongoose.Schema({
   },
 
   userType: String,
-  locationCategory: String,
-  block: String,
-  floor: String,
-  roomNumber: String,
+
+  location: {
+    category: String,
+    block: String,
+    floor: String,
+    roomNumber: String
+  },
+
+  reporter: {
+    name: String,
+    email: String,
+    rollNumber: String,
+    year: String,
+    dept: String
+  },
 
   condition: String,
   problemLevel: String,
@@ -41,16 +52,11 @@ const issueSchema = new mongoose.Schema({
   issues: [String], // Array of issue codes (e.g., ["slowInternet", "projectorNotWorking"])
   otherSuggestions: String,
 
-  // status: {
-  //   type: String,
-  //   enum: ['submitted', 'assigned', 'completed'],
-  //   default: 'submitted'
-  // },
-
   status: {
-  type: String,
-  enum: ['submitted', 'assigned', 'in_progress', 'completed'],
-  default: 'submitted'},
+    type: String,
+    enum: ['submitted', 'assigned', 'in_progress', 'completed'],
+    default: 'submitted'
+  },
 
   timestamps: {
     submitted: { type: Date, default: Date.now },

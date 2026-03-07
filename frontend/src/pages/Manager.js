@@ -473,7 +473,7 @@ function Manager({ userName, onLogout }) {
                         <tr key={issue._id} className={`issue-row status-${issue.status} ${issue.responseAlert ? 'alert-response' : ''} ${issue.solveAlert ? 'alert-solve' : ''} ${isNewIssue(issue) ? 'new-issue-highlight' : ''}`}>
                           <td>IS{index + 1}</td>
                           <td>
-                            Block {issue.block}, Floor {issue.floor}, Room {issue.roomNumber}
+                            Block {issue.location?.block}, Floor {issue.location?.floor}, Room {issue.location?.roomNumber}
                           </td>
                           <td>{issue.name || issue.submittedBy?.username || (issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector')}</td>
                           <td>{issue.locationCategory}</td>
@@ -542,7 +542,7 @@ function Manager({ userName, onLogout }) {
                       <tr key={issue._id} className="issue-row status-completed">
                         <td>IS{index + 1}</td>
                         <td>
-                          Block {issue.block}, Floor {issue.floor}, Room {issue.roomNumber}
+                          Block {issue.location?.block}, Floor {issue.location?.floor}, Room {issue.location?.roomNumber}
                         </td>
                         <td>{issue.name || issue.submittedBy?.username || (issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector')}</td>
                         <td>{issue.locationCategory}</td>
@@ -596,28 +596,28 @@ function Manager({ userName, onLogout }) {
                   {selectedIssue.userType === 'student' && (
                     <>
                       <p><strong>Type:</strong> Student</p>
-                      <p><strong>Name:</strong> {selectedIssue.data?.name || selectedIssue.name || 'Student'}</p>
-                      <p><strong>Roll Number:</strong> {selectedIssue.data?.rollNumber || selectedIssue.rollNumber || 'Not provided'}</p>
-                      <p><strong>Department:</strong> {selectedIssue.data?.dept || selectedIssue.dept || 'Not provided'}</p>
-                      <p><strong>Email:</strong> {selectedIssue.data?.email || selectedIssue.submittedBy?.email || 'Not provided'}</p>
+                      <p><strong>Name:</strong> {selectedIssue.reporter?.name || selectedIssue.data?.name || selectedIssue.name || 'Student'}</p>
+                      <p><strong>Roll Number:</strong> {selectedIssue.reporter?.rollNumber || selectedIssue.data?.rollNumber || selectedIssue.rollNumber || 'Not provided'}</p>
+                      <p><strong>Department:</strong> {selectedIssue.reporter?.dept || selectedIssue.data?.dept || selectedIssue.dept || 'Not provided'}</p>
+                      <p><strong>Email:</strong> {selectedIssue.reporter?.email || selectedIssue.data?.email || selectedIssue.submittedBy?.email || 'Not provided'}</p>
                     </>
                   )}
 
                   {selectedIssue.userType === 'faculty' && (
                     <>
                       <p><strong>Type:</strong> Faculty</p>
-                      <p><strong>Name:</strong> {selectedIssue.data?.name || selectedIssue.name || 'Faculty'}</p>
+                      <p><strong>Name:</strong> {selectedIssue.reporter?.name || selectedIssue.data?.name || selectedIssue.name || 'Faculty'}</p>
                       <p><strong>Faculty ID:</strong> {selectedIssue.data?.facultyId || selectedIssue.facultyId || 'Not provided'}</p>
-                      <p><strong>Email:</strong> {selectedIssue.data?.email || selectedIssue.submittedBy?.email || 'Not provided'}</p>
+                      <p><strong>Email:</strong> {selectedIssue.reporter?.email || selectedIssue.data?.email || selectedIssue.submittedBy?.email || 'Not provided'}</p>
                     </>
                   )}
 
                   {selectedIssue.userType === 'data_collector' && (
                     <>
                       <p><strong>Type:</strong> Data Collector</p>
-                      <p><strong>Name:</strong> {selectedIssue.data?.name || selectedIssue.name || 'Data Collector'}</p>
+                      <p><strong>Name:</strong> {selectedIssue.reporter?.name || selectedIssue.data?.name || selectedIssue.name || 'Data Collector'}</p>
                       <p><strong>ID:</strong> {selectedIssue.data?.collectorId || selectedIssue.collectorId || 'Not provided'}</p>
-                      <p><strong>Email:</strong> {selectedIssue.data?.email || selectedIssue.submittedBy?.email || 'Not provided'}</p>
+                      <p><strong>Email:</strong> {selectedIssue.reporter?.email || selectedIssue.data?.email || selectedIssue.submittedBy?.email || 'Not provided'}</p>
                     </>
                   )}
                 </div>
@@ -625,10 +625,10 @@ function Manager({ userName, onLogout }) {
                 {/* Location Details */}
                 <div className="detail-section">
                   <h4>Location Details</h4>
-                  <p><strong>Block:</strong> {selectedIssue.block}</p>
-                  <p><strong>Floor:</strong> {selectedIssue.floor}</p>
-                  <p><strong>Room Number:</strong> {selectedIssue.roomNumber}</p>
-                  <p><strong>Location Type:</strong> {selectedIssue.locationCategory}</p>
+                  <p><strong>Block:</strong> {selectedIssue.location?.block}</p>
+                  <p><strong>Floor:</strong> {selectedIssue.location?.floor}</p>
+                  <p><strong>Room Number:</strong> {selectedIssue.location?.roomNumber}</p>
+                  <p><strong>Location Type:</strong> {selectedIssue.location?.category}</p>
                 </div>
 
                 {/* Issue Details - Overall Condition and Issue */}
