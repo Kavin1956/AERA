@@ -322,6 +322,7 @@ function DataCollector({ userName, onLogout }) {
         condition: formData.condition,
         problemLevel,
         otherSuggestions: formData.otherSuggestions,
+        specificIssues: reportedIssues, // Array of specific issues found
         data: formData,
         priority,
         technicianType,

@@ -37,6 +37,7 @@ const issueSchema = new mongoose.Schema({
   },
 
   data: Object,
+  specificIssues: [String], // Array of specific issues found (e.g., ["Whiteboard needs cleaning", "Slow internet"])
   otherSuggestions: String,
 
   // status: {
