@@ -1073,7 +1073,7 @@ function DataCollector({ userName, onLogout }) {
                         onClick={() => handleDeleteIssue(issue._id)}
                         title="Delete this issue"
                       >
-                        🗑️ Delete
+                        Delete
                       </button>
                     </div>
                     <p className="issue-time">
