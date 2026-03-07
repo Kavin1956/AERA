@@ -638,7 +638,19 @@ function Manager({ userName, onLogout }) {
                   
                   {/* Display specific problems from the issue data */}
                   <p><strong>Specific Issues Found:</strong></p>
-                  {selectedIssue.data ? (
+                  {selectedIssue.specificIssues && selectedIssue.specificIssues.length > 0 ? (
+                    <div style={{ marginLeft: '20px' }}>
+                      {selectedIssue.specificIssues.map((issue, i) => (
+                        <p key={i} style={{ margin: '5px 0', color: '#e74c3c' }}>• {issue}</p>
+                      ))}
+                      {selectedIssue.otherSuggestions && (
+                        <>
+                          <p style={{ margin: '8px 0 3px 0', color: '#2c3e50', fontWeight: '500' }}>📋 Additional Comments:</p>
+                          <p style={{ margin: '3px 0', color: '#555', fontStyle: 'italic' }}>{selectedIssue.otherSuggestions}</p>
+                        </>
+                      )}
+                    </div>
+                  ) : selectedIssue.data ? (
                     <div style={{ marginLeft: '20px' }}>
                       {(() => {
                         const problems = [];
