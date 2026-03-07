@@ -261,6 +261,15 @@ exports.seedAccounts = async (req, res) => {
         username: 'dc_isaac',
         password: await hashPassword('dcpass123'),
         role: 'data_collector'
+      },
+
+      // Demo account for testing
+      {
+        fullName: 'Demo User',
+        email: 'demo@aera.edu',
+        username: 'demo',
+        password: await hashPassword('demo123'),
+        role: 'data_collector'
       }
     ];
 
@@ -281,7 +290,8 @@ exports.seedAccounts = async (req, res) => {
         dataCollectors: [
           { username: 'dc_grace', password: 'dcpass123' },
           { username: 'dc_hannah', password: 'dcpass123' },
-          { username: 'dc_isaac', password: 'dcpass123' }
+          { username: 'dc_isaac', password: 'dcpass123' },
+          { username: 'demo', password: 'demo123' }
         ]
       }
     });
