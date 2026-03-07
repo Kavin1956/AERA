@@ -1081,7 +1081,7 @@ function DataCollector({ userName, onLogout }) {
                       {issue.timestamps?.submitted ? new Date(issue.timestamps.submitted).toLocaleString() : 'Just now'}
                     </p>
                     <p className="issue-info">
-                      <strong>Location:</strong> {issue.block} Block, {issue.floor}, Room {issue.roomNumber}
+                      <strong>Location:</strong> {issue.block} Block, {issue.floor}, Room {issue.roomNumber || 'N/A'}
                     </p>
                     <p className="issue-info">
                       <strong>Condition:</strong> {issue.condition}
@@ -1094,7 +1094,15 @@ function DataCollector({ userName, onLogout }) {
                     <p className="issue-info">
                       <strong>Specific Issues Found:</strong>
                     </p>
-                    {issue.data ? (
+                    {issue.specificIssues && issue.specificIssues.length > 0 ? (
+                      <div style={{ marginLeft: '10px', fontSize: '0.9rem' }}>
+                        {issue.specificIssues.map((problem, idx) => (
+                          <div key={idx} style={{ color: '#e74c3c', marginBottom: '0.3rem' }}>
+                            • {problem}
+                          </div>
+                        ))}
+                      </div>
+                    ) : issue.data ? (
                       <div style={{ marginLeft: '10px', fontSize: '0.9rem' }}>
                         {(() => {
                           const problems = [];
