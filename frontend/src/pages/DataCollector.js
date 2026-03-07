@@ -57,7 +57,7 @@ function DataCollector({ userName, onLogout }) {
 
   // Delete issue handler
   const handleDeleteIssue = async (issueId) => {
-    if (window.confirm('Are you sure you want to delete this issue? This action cannot be undone.')) {
+    if (window.confirm('Are you sure you want to delete this issue?')) {
       try {
         await issueAPI.deleteIssue(issueId);
         // Remove from local state
