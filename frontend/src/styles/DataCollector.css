@@ -469,6 +469,9 @@
   cursor: pointer;
   border: none;
   transition: all 0.2s ease;
+  display: inline-block;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .delete-btn:hover {
