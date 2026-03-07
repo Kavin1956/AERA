@@ -7,6 +7,8 @@ import { technicianAPI } from '../services/api';
 
 
 function Technician({ userName, onLogout }) {
+  // Fallback to sessionStorage if userName prop is not available
+  const displayName = userName || sessionStorage.getItem('userName');
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -93,7 +95,7 @@ function Technician({ userName, onLogout }) {
       // // const assignedTasks = (response.data || []).filter(issue => 
       // //   issue.status === 'assigned' || issue.status === 'in_progress' || issue.status === 'completed'
       // // );
-      // const username = localStorage.getItem('userName');
+      // const username = sessionStorage.getItem('userName');
       // const assignedTasks = (response.data || []).filter(issue =>
       //   issue.assignedTechnician?.username === username &&
       //   ['assigned', 'in_progress', 'completed'].includes(issue.status));
@@ -148,7 +150,7 @@ function Technician({ userName, onLogout }) {
 
   return (
     <div className="technician-container">
-      <Navbar userName={userName} role="Technician" onLogout={onLogout} />
+      <Navbar userName={displayName} role="Technician" onLogout={onLogout} />
 
       <div className="technician-main">
         <div className="technician-header">

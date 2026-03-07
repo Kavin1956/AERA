@@ -21,6 +21,8 @@ import Navbar from '../components/Navbar';
 import { issueAPI } from '../services/api';
 
 function DataCollector({ userName, onLogout }) {
+  // Fallback to sessionStorage if userName prop is not available
+  const displayName = userName || sessionStorage.getItem('userName');
   const [currentStep, setCurrentStep] = useState(1);
   const [userType, setUserType] = useState('');
   const [locationCategory, setLocationCategory] = useState('');
@@ -180,7 +182,6 @@ function DataCollector({ userName, onLogout }) {
 
   const calculatePriority = () => {
     // Priority based on condition and detected issues
-    const severity = formData.condition?.toLowerCase();
     let priority = 'Low'; // Default: Low priority
     let technicianType = 'general_support';
 
@@ -286,7 +287,7 @@ function DataCollector({ userName, onLogout }) {
         console.debug('\n📤 Submitting Issue:');
         console.debug('Token:', sessionStorage.getItem('token')?.substring(0, 30) + '...');
         console.debug('User Role:', sessionStorage.getItem('userRole'));
-        console.debug('User Name:', localStorage.getItem('userName'));
+        console.debug('User Name:', sessionStorage.getItem('userName'));
         console.debug('Issue Data:', {
           userType,
           locationCategory,
@@ -359,7 +360,7 @@ function DataCollector({ userName, onLogout }) {
 
   return (
     <div className="data-collector-container">
-      <Navbar userName={userName} role="Data Collector" onLogout={onLogout} />
+      <Navbar userName={displayName} role="Data Collector" onLogout={onLogout} />
       
       <div className="data-collector-main">
         <div className="data-collector-header">

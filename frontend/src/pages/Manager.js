@@ -4,6 +4,9 @@ import Navbar from '../components/Navbar';
 import { issueAPI } from '../services/api';
 
 function Manager({ userName, onLogout }) {
+  // Fallback to sessionStorage if userName prop is not available
+  const displayName = userName || sessionStorage.getItem('userName');
+  
   // Available technician types
   const TECHNICIAN_TYPES = {
     'electrical': 'Electrical Technician',
@@ -321,7 +324,7 @@ function Manager({ userName, onLogout }) {
 
   return (
     <div className="manager-container">
-      <Navbar userName={userName} role="Manager" onLogout={onLogout} />
+      <Navbar userName={displayName} role="Manager" onLogout={onLogout} />
 
       <div className="manager-main">
         <div className="manager-header">

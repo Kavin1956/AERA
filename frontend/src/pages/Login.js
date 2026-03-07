@@ -26,11 +26,10 @@ function Login({ onLogin }) {
       const response = await authAPI.login(username, password);
       const { token, role: userRole, username: userName } = response.data;
       
-      // Store token and user info - use sessionStorage for token/role (tab-specific)
+      // Store token and user info in sessionStorage (tab-specific, not shared across tabs)
       sessionStorage.setItem('token', token);
       sessionStorage.setItem('userRole', userRole);
-      localStorage.setItem('userName', userName);
-      localStorage.setItem('isAuthenticated', 'true');
+      sessionStorage.setItem('userName', userName);
       
       onLogin(userName, userRole);
       

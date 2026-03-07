@@ -8,10 +8,10 @@ import Technician from './pages/Technician';
 import './styles/App.css';
 
 function App() {
-  // Attempt to restore session from sessionStorage (tab-specific) and localStorage
+  // Attempt to restore session from sessionStorage (tab-specific)
   const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem('token') ? true : false);
   const [userRole, setUserRole] = useState(() => sessionStorage.getItem('userRole') || null);
-  const [userName, setUserName] = useState(() => localStorage.getItem('userName') || null);
+  const [userName, setUserName] = useState(() => sessionStorage.getItem('userName') || null);
 
   // Ensure we don't keep an authenticated flag without token
   useEffect(() => {
@@ -22,9 +22,9 @@ function App() {
       setIsAuthenticated(false);
       setUserRole(null);
       setUserName(null);
-      localStorage.removeItem('isAuthenticated');
       sessionStorage.removeItem('userRole');
       sessionStorage.removeItem('token');
+      sessionStorage.removeItem('userName');
     }
   }, [isAuthenticated]);
 
@@ -40,19 +40,19 @@ function App() {
     setIsAuthenticated(true);
     setUserRole(role);
     setUserName(username);
-    // Persist session - use sessionStorage for token/role (tab-specific), localStorage for userName
-    localStorage.setItem('isAuthenticated', 'true');
+    // Persist session - use sessionStorage for all data (tab-specific, not shared across tabs)
     sessionStorage.setItem('userRole', role);
-    localStorage.setItem('userName', username);
+    sessionStorage.setItem('userName', username);
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
     setUserRole(null);
     setUserName(null);
-    localStorage.removeItem('isAuthenticated');
-    sessionStorage.removeItem('userRole');
+    // Clear all session data from this tab
     sessionStorage.removeItem('token');
+    sessionStorage.removeItem('userRole');
+    sessionStorage.removeItem('userName');
   };
 
   return (
