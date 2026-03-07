@@ -462,13 +462,15 @@
 .delete-btn {
   background: #e74c3c;
   color: white;
-  padding: 0.3rem 0.7rem;
+  padding: 0.25rem 0.6rem;
   border: none;
   border-radius: 3px;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+  line-height: 1;
+  height: fit-content;
 }
 
 .delete-btn:hover {
