@@ -198,7 +198,7 @@ function Manager({ userName, onLogout }) {
     const submitted = issues.filter(i => i.status === 'submitted').length;
     const assigned = issues.filter(i => i.status === 'assigned').length;
     const completed = issues.filter(i => i.status === 'completed').length;
-    const total = issues.length;
+    const total = submitted + assigned + completed; // Sum of all tracked statuses
 
     // Weekly analysis - issues from last 7 days (use all issues if none are this week)
     const sevenDaysAgo = new Date(new Date().setDate(new Date().getDate() - 7));
@@ -211,26 +211,34 @@ function Manager({ userName, onLogout }) {
     // Use weekly issues if available, otherwise use all issues for display
     const dataSourceIssues = weeklyIssues.length > 0 ? weeklyIssues : issues;
 
-    // Count by technician/issue type
-    const countsByType = issues.reduce((acc, it) => {
+    // Count by technician/issue type (from weekly issues only)
+    const countsByType = dataSourceIssues.reduce((acc, it) => {
       const key = it.technicianType || it.issueType || 'Others';
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
+
+    // Calculate weekly totals by technician type
+    const electricalCount = dataSourceIssues.filter(i => i.technicianType === 'electrical').length;
+    const itSystemCount = dataSourceIssues.filter(i => i.technicianType === 'it_system').length;
+    const maintenanceCount = dataSourceIssues.filter(i => i.technicianType === 'maintenance').length;
+    const safetyCount = dataSourceIssues.filter(i => i.technicianType === 'safety').length;
+    const generalSupportCount = dataSourceIssues.filter(i => i.technicianType === 'general_support').length;
+    const weeklyTotalCount = electricalCount + itSystemCount + maintenanceCount + safetyCount + generalSupportCount;
 
     setAnalyticsData({
       submitted,
       assigned,
       completed,
       total,
-      weeklyTotal: dataSourceIssues.length,
+      weeklyTotal: weeklyTotalCount,
       countsByType,
       weeklyByPriority: {
-        1: dataSourceIssues.filter(i => i.technicianType === 'electrical').length,
-        2: dataSourceIssues.filter(i => i.technicianType === 'it_system').length,
-        3: dataSourceIssues.filter(i => i.technicianType === 'maintenance').length,
-        4: dataSourceIssues.filter(i => i.technicianType === 'safety').length,
-        5: dataSourceIssues.filter(i => i.technicianType === 'general_support').length
+        1: electricalCount,
+        2: itSystemCount,
+        3: maintenanceCount,
+        4: safetyCount,
+        5: generalSupportCount
       }
     });
   }, [issues]);
