@@ -47,10 +47,12 @@ const issueSchema = new mongoose.Schema({
     default: null
   },
 
+
   data: Object,
   specificIssues: [String], // Array of specific issues found (e.g., ["Whiteboard needs cleaning", "Slow internet"])
   issues: [String], // Array of issue codes (e.g., ["slowInternet", "projectorNotWorking"])
   otherSuggestions: String,
+  technicianNotes: String, // Notes/updates from technician
 
   status: {
     type: String,

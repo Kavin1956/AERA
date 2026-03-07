@@ -539,6 +539,9 @@ function DataCollector({ userName, onLogout }) {
                           onChange={handleChange}
                           placeholder="Enter your roll number"
                         />
+                        {issue.technicianNotes && (
+                          <p style={{ margin: '8px 0 3px 0', color: '#2980b9', fontWeight: '500' }}>🛠️ Technician Update: <span style={{ color: '#555', fontStyle: 'italic', marginLeft: 4 }}>{issue.technicianNotes}</span></p>
+                        )}
                       </div>
 
                       <div className="form-row">

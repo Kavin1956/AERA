@@ -649,6 +649,9 @@ function Manager({ userName, onLogout }) {
                           <p style={{ margin: '3px 0', color: '#555', fontStyle: 'italic' }}>{selectedIssue.otherSuggestions}</p>
                         </>
                       )}
+                      {selectedIssue.technicianNotes && (
+                        <p style={{ margin: '8px 0 3px 0', color: '#2980b9', fontWeight: '500' }}>🛠️ Technician Update: <span style={{ color: '#555', fontStyle: 'italic', marginLeft: 4 }}>{selectedIssue.technicianNotes}</span></p>
+                      )}
                     </div>
                   ) : selectedIssue.data ? (
                     <div style={{ marginLeft: '20px' }}>
