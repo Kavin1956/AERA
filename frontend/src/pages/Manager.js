@@ -86,15 +86,9 @@ function Manager({ userName, onLogout }) {
       }
     };
 
-    // Initial fetch immediately
+    // Initial fetch immediately on mount
     fetchIssues();
     
-    // Refresh every 5 seconds to show new submissions from Data Collectors
-    const interval = setInterval(fetchIssues, 5000);
-    
-    return () => {
-      clearInterval(interval);
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency - run only on mount
 

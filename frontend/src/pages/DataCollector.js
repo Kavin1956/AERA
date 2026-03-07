@@ -49,11 +49,7 @@ function DataCollector({ userName, onLogout }) {
     };
 
     fetchIssues();
-    
-    // Refresh every 5 seconds to show latest
-    const interval = setInterval(fetchIssues, 5000);
-    return () => clearInterval(interval);
-  }, [userName]);
+  }, []);
 
   // Delete issue handler
   const handleDeleteIssue = async (issueId) => {
