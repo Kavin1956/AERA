@@ -311,6 +311,20 @@ function Manager({ userName, onLogout }) {
     }
   };
 
+  const handleDeleteIssue = async (issueId) => {
+    if (window.confirm('Are you sure you want to delete this issue? This action cannot be undone.')) {
+      try {
+        await issueAPI.deleteIssue(issueId);
+        // Remove from local state
+        setIssues(issues.filter(issue => issue._id !== issueId));
+        alert('Issue deleted successfully');
+      } catch (err) {
+        console.error('❌ Delete issue error:', err.response?.data || err.message);
+        alert('Failed to delete issue: ' + (err.response?.data?.message || err.message));
+      }
+    }
+  };
+
   const getFilteredIssues = () => {
     let filtered = issues.filter(i => i.status !== 'completed');
     
@@ -497,6 +511,13 @@ function Manager({ userName, onLogout }) {
                             >
                               View
                             </button>
+                            <button
+                              className="delete-btn"
+                              onClick={() => handleDeleteIssue(issue._id)}
+                              title="Delete issue"
+                            >
+                              🗑️ Delete
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -558,6 +579,13 @@ function Manager({ userName, onLogout }) {
                             }}
                           >
                             View
+                          </button>
+                          <button
+                            className="delete-btn"
+                            onClick={() => handleDeleteIssue(issue._id)}
+                            title="Delete issue"
+                          >
+                            🗑️ Delete
                           </button>
                         </td>
                       </tr>
