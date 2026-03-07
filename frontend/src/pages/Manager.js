@@ -505,13 +505,6 @@ function Manager({ userName, onLogout }) {
                             >
                               View
                             </button>
-                            <button
-                              className="delete-btn"
-                              onClick={() => handleDeleteIssue(issue._id)}
-                              title="Delete issue"
-                            >
-                              🗑️ Delete
-                            </button>
                           </td>
                         </tr>
                       ))}
@@ -573,13 +566,6 @@ function Manager({ userName, onLogout }) {
                             }}
                           >
                             View
-                          </button>
-                          <button
-                            className="delete-btn"
-                            onClick={() => handleDeleteIssue(issue._id)}
-                            title="Delete issue"
-                          >
-                            🗑️ Delete
                           </button>
                         </td>
                       </tr>
@@ -818,6 +804,16 @@ function Manager({ userName, onLogout }) {
               {selectedIssue.status === 'completed' && (
                 <p className="completed-message">✓ Issue Completed</p>
               )}
+              <button
+                className="delete-btn"
+                onClick={() => {
+                  handleDeleteIssue(selectedIssue._id);
+                  setShowDetails(false);
+                }}
+                title="Delete this issue permanently"
+              >
+                🗑️ Delete Issue
+              </button>
               <button
                 className="cancel-btn"
                 onClick={() => setShowDetails(false)}
