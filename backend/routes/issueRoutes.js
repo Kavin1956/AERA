@@ -56,4 +56,11 @@ router.put(
   issueController.completeIssue
 );
 
+// Delete issue (Data collector can delete their own, Manager can delete any)
+router.delete(
+  '/:id',
+  auth,
+  issueController.deleteIssue
+);
+
 module.exports = router;

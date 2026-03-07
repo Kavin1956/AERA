@@ -54,9 +54,11 @@ export const issueAPI = {
   completeIssue: (issueId, updateData = {}) =>
     api.put(`/issues/${issueId}/complete`, updateData),
 
-  // ✅ ADD THIS LINE (NEW)
   updateIssueStatus: (issueId, data) =>
-    api.put(`/issues/${issueId}/status`, data)
+    api.put(`/issues/${issueId}/status`, data),
+
+  deleteIssue: (issueId) =>
+    api.delete(`/issues/${issueId}`)
 };
 
 

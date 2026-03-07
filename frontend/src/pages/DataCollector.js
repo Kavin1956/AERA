@@ -55,6 +55,21 @@ function DataCollector({ userName, onLogout }) {
     return () => clearInterval(interval);
   }, [userName]);
 
+  // Delete issue handler
+  const handleDeleteIssue = async (issueId) => {
+    if (window.confirm('Are you sure you want to delete this issue? This action cannot be undone.')) {
+      try {
+        await issueAPI.deleteIssue(issueId);
+        // Remove from local state
+        setIssues(issues.filter(issue => issue._id !== issueId));
+        alert('Issue deleted successfully');
+      } catch (err) {
+        console.error('❌ Delete issue error:', err.response?.data || err.message);
+        alert('Failed to delete issue: ' + (err.response?.data?.message || err.message));
+      }
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -1057,6 +1072,13 @@ function DataCollector({ userName, onLogout }) {
                     <div className="issue-header">
                       <span className="issue-type">{issue.userType}</span>
                       <span className="issue-status">{issue.status}</span>
+                      <button 
+                        className="delete-btn"
+                        onClick={() => handleDeleteIssue(issue._id)}
+                        title="Delete this issue"
+                      >
+                        🗑️ Delete
+                      </button>
                     </div>
                     <p className="issue-time">
                       {issue.timestamps?.submitted ? new Date(issue.timestamps.submitted).toLocaleString() : 'Just now'}

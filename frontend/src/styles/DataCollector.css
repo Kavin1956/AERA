@@ -459,6 +459,27 @@
   text-transform: capitalize;
 }
 
+.delete-btn {
+  background: #e74c3c;
+  color: white;
+  padding: 0.3rem 0.7rem;
+  border: none;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.delete-btn:hover {
+  background: #c0392b;
+  transform: scale(1.05);
+}
+
+.delete-btn:active {
+  transform: scale(0.95);
+}
+
 .issue-time {
   font-size: 0.8rem;
   color: #7f8c8d;

@@ -315,3 +315,50 @@ exports.updateIssueStatus = async (req, res) => {
     res.status(500).json({ message: 'Error updating issue status' });
   }
 };
+
+// Delete issue (Data Collector can delete their own issues, Manager can delete any issue)
+exports.deleteIssue = async (req, res) => {
+  try {
+    const issueId = req.params.id;
+    const userRole = req.user?.role;
+    const userId = req.user?.id;
+
+    console.log(`\n🗑️  Delete Issue Request:`);
+    console.log(`   Issue ID: ${issueId}`);
+    console.log(`   User: ${req.user?.username} (${userRole})`);
+
+    const issue = await Issue.findById(issueId);
+
+    if (!issue) {
+      return res.status(404).json({ 
+        message: 'Issue not found',
+        details: `No issue found with ID: ${issueId}`
+      });
+    }
+
+    // Authorization: Data collectors can only delete their own issues, managers can delete any issue
+    if (userRole === 'data_collector' && issue.submittedBy.toString() !== userId) {
+      console.error(`❌ Unauthorized: Data collector ${userId} cannot delete issue submitted by ${issue.submittedBy}`);
+      return res.status(403).json({ 
+        message: 'Access denied',
+        details: 'Data collectors can only delete their own submitted issues'
+      });
+    }
+
+    // Delete the issue
+    await Issue.findByIdAndDelete(issueId);
+
+    console.log(`✅ Issue deleted: ${issueId}`);
+    res.json({ 
+      message: 'Issue deleted successfully',
+      issueId: issueId
+    });
+  } catch (error) {
+    console.error('❌ Delete issue error:', error);
+    res.status(500).json({ 
+      message: 'Error deleting issue',
+      error: error.message,
+      details: error.message
+    });
+  }
+};
