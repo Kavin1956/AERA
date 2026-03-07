@@ -61,7 +61,7 @@ exports.updateTaskStatus = async (req, res) => {
     }
 
     const update = { status };
-    if (typeof updateNotes !== 'undefined') update.updateNotes = updateNotes;
+    if (typeof updateNotes !== 'undefined') update.technicianNotes = updateNotes;
     if (status === 'completed') update['timestamps.completed'] = new Date();
 
     const issue = await Issue.findByIdAndUpdate(
