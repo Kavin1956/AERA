@@ -54,6 +54,7 @@ function Manager({ userName, onLogout }) {
 
         const response = await issueAPI.getAllIssues();
         if (process.env.REACT_APP_DEBUG === 'true') console.debug('📥 Issues loaded in Manager:', response.data?.length, 'issues');
+        console.log('📥 ALL ISSUES RECEIVED:', JSON.stringify(response.data?.slice(0, 2), null, 2));
         setIssues(response.data || []);
         setError('');
         
@@ -291,17 +292,51 @@ function Manager({ userName, onLogout }) {
   };
 
   const sendWarningAlert = async (issueId) => {
+    if (!issueId) {
+      alert('Error: Issue ID is missing');
+      return;
+    }
+
+    const warningMessage = prompt('Enter warning message for the technician (optional):', 
+      '⚠️ This issue requires your immediate attention');
+    
+    if (warningMessage === null) {
+      // User cancelled
+      return;
+    }
+
     try {
+      console.log(`📨 Sending warning alert for issue ${issueId}`);
+      
+      // Call the backend API to send warning
+      const response = await issueAPI.sendWarningAlert(issueId, {
+        message: warningMessage || '⚠️ This issue requires your immediate attention'
+      });
+
+      console.log('✅ Warning alert sent:', response);
+      
+      // Update local state to mark warning sent
       setIssues(issues.map(i =>
         i._id === issueId ? { 
           ...i, 
-          alerts: [...(i.alerts || []), 'warning'],
-          warningAlert: true
+          warningAlert: false, // Reset flag after sending
+          lastWarningAlert: new Date()
         } : i
       ));
-      alert('Warning alert sent to technician!');
+
+      // Update selected issue display
+      if (selectedIssue && selectedIssue._id === issueId) {
+        setSelectedIssue(prev => ({
+          ...prev,
+          warningAlert: false,
+          lastWarningAlert: new Date()
+        }));
+      }
+
+      alert('✅ Warning alert sent to assigned technician!');
     } catch (err) {
-      console.error('Send warning error:', err);
+      console.error('❌ Send warning error:', err);
+      alert('Failed to send warning alert: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -469,14 +504,22 @@ function Manager({ userName, onLogout }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {currentTabIssues?.map((issue, index) => (
+                      {currentTabIssues?.map((issue, index) => {
+                        // eslint-disable-next-line no-unused-vars
+                        return (
                         <tr key={issue._id} className={`issue-row status-${issue.status} ${issue.responseAlert ? 'alert-response' : ''} ${issue.solveAlert ? 'alert-solve' : ''} ${isNewIssue(issue) ? 'new-issue-highlight' : ''}`}>
                           <td>IS{index + 1}</td>
                           <td>
-                            Block {issue.location?.block}, Floor {issue.location?.floor}, Room {issue.location?.roomNumber}
+                            {(() => {
+                              const block = issue.location?.block || 'N/A';
+                              const floor = issue.location?.floor || 'N/A';
+                              const room = issue.location?.roomNumber || 'N/A';
+                              console.debug(`Issue ${issue._id}: location data =`, { block, floor, room, fullLocation: issue.location });
+                              return `Block ${block}, Floor ${floor}, Room ${room}`;
+                            })()}
                           </td>
-                          <td>{issue.name || issue.submittedBy?.username || (issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector')}</td>
-                          <td>{issue.locationCategory}</td>
+                          <td>{issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector'}</td>
+                          <td>{issue.location?.category || 'N/A'}</td>
                           <td>
                             <span className={`priority-badge priority-${issue.priority}`}>
                               P{issue.priority}
@@ -498,6 +541,7 @@ function Manager({ userName, onLogout }) {
                             <button
                               className="view-btn"
                               onClick={() => {
+                                console.log('🔍 SELECTED ISSUE DATA:', JSON.stringify(issue, null, 2));
                                 setSelectedIssue(issue);
                                 setSelectedIssueDisplayId(`IS${index + 1}`);
                                 setShowDetails(true);
@@ -507,7 +551,8 @@ function Manager({ userName, onLogout }) {
                             </button>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
@@ -544,8 +589,8 @@ function Manager({ userName, onLogout }) {
                         <td>
                           Block {issue.location?.block}, Floor {issue.location?.floor}, Room {issue.location?.roomNumber}
                         </td>
-                        <td>{issue.name || issue.submittedBy?.username || (issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector')}</td>
-                        <td>{issue.locationCategory}</td>
+                        <td>{issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector'}</td>
+                        <td>{issue.location?.category}</td>
                         <td>
                           <span className="priority-badge">{issue.priority || 'medium'}</span>
                         </td>
@@ -625,10 +670,10 @@ function Manager({ userName, onLogout }) {
                 {/* Location Details */}
                 <div className="detail-section">
                   <h4>Location Details</h4>
-                  <p><strong>Block:</strong> {selectedIssue.location?.block}</p>
-                  <p><strong>Floor:</strong> {selectedIssue.location?.floor}</p>
-                  <p><strong>Room Number:</strong> {selectedIssue.location?.roomNumber}</p>
-                  <p><strong>Location Type:</strong> {selectedIssue.location?.category}</p>
+                  <p><strong>Block:</strong> {selectedIssue.location?.block || 'N/A'}</p>
+                  <p><strong>Floor:</strong> {selectedIssue.location?.floor || 'N/A'}</p>
+                  <p><strong>Room Number:</strong> {selectedIssue.location?.roomNumber || 'N/A'}</p>
+                  <p><strong>Location Type:</strong> {selectedIssue.location?.category || 'N/A'}</p>
                 </div>
 
                 {/* Issue Details - Overall Condition and Issue */}

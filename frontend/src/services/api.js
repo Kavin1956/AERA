@@ -58,7 +58,10 @@ export const issueAPI = {
     api.put(`/issues/${issueId}/status`, data),
 
   deleteIssue: (issueId) =>
-    api.delete(`/issues/${issueId}`)
+    api.delete(`/issues/${issueId}`),
+
+  sendWarningAlert: (issueId, warningData) =>
+    api.post(`/issues/${issueId}/send-warning`, warningData)
 };
 
 

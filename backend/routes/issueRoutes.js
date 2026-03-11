@@ -63,4 +63,12 @@ router.delete(
   issueController.deleteIssue
 );
 
+// Send warning alert to assigned technician (Manager only)
+router.post(
+  '/:id/send-warning',
+  auth,
+  role('manager'),
+  issueController.sendWarningAlert
+);
+
 module.exports = router;

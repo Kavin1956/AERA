@@ -10,6 +10,7 @@ import './styles/App.css';
 function App() {
   // Attempt to restore session from sessionStorage (tab-specific)
   const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem('token') ? true : false);
+  // eslint-disable-next-line no-unused-vars
   const [userRole, setUserRole] = useState(() => sessionStorage.getItem('userRole') || null);
   const [userName, setUserName] = useState(() => sessionStorage.getItem('userName') || null);
 
@@ -22,8 +23,8 @@ function App() {
       setIsAuthenticated(false);
       setUserRole(null);
       setUserName(null);
-      sessionStorage.removeItem('userRole');
       sessionStorage.removeItem('token');
+      sessionStorage.removeItem('userRole');
       sessionStorage.removeItem('userName');
     }
   }, [isAuthenticated]);

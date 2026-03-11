@@ -362,3 +362,68 @@ exports.deleteIssue = async (req, res) => {
     });
   }
 };
+
+exports.sendWarningAlert = async (req, res) => {
+  try {
+    const issueId = req.params.id;
+    const userRole = req.user?.role;
+    const userId = req.user?.id;
+    const { message } = req.body;
+
+    console.log(`\n⚠️  Send Warning Alert Request:`);
+    console.log(`   Issue ID: ${issueId}`);
+    console.log(`   User: ${req.user?.username} (${userRole})`);
+
+    // Only managers can send warning alerts
+    if (userRole !== 'manager') {
+      return res.status(403).json({ 
+        message: 'Access denied',
+        details: 'Only managers can send warning alerts'
+      });
+    }
+
+    const issue = await Issue.findById(issueId);
+    if (!issue) {
+      return res.status(404).json({ 
+        message: 'Issue not found',
+        details: `No issue found with ID: ${issueId}`
+      });
+    }
+
+    // Check if issue has assigned technician
+    if (!issue.assignedTechnician) {
+      return res.status(400).json({ 
+        message: 'No technician assigned',
+        details: 'Cannot send warning to an issue without an assigned technician'
+      });
+    }
+
+    // Import Notification model
+    const Notification = require('../models/notification');
+
+    // Create notification for the technician
+    const notification = await Notification.create({
+      technicianId: issue.assignedTechnician,
+      issueId: issueId,
+      message: message || `⚠️ Warning: Issue ${issueId} needs urgent attention. Please respond immediately.`
+    });
+
+    // Update issue to mark that warning was sent
+    issue.warningAlert = true;
+    issue.lastWarningAlert = new Date();
+    await issue.save();
+
+    console.log(`✅ Warning alert sent to technician for issue ${issueId}`);
+    res.json({ 
+      message: 'Warning alert sent successfully',
+      notificationId: notification._id,
+      issueId: issueId
+    });
+  } catch (error) {
+    console.error('❌ Send warning alert error:', error);
+    res.status(500).json({ 
+      message: 'Error sending warning alert',
+      error: error.message
+    });
+  }
+};

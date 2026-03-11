@@ -72,6 +72,7 @@ function DataCollector({ userName, onLogout }) {
       ...prev,
       [name]: value
     }));
+    console.debug(`📝 Form field updated: ${name} = "${value}"`);
     setError('');
   };
 
@@ -216,7 +217,6 @@ function DataCollector({ userName, onLogout }) {
       priority = 'High';
       technicianType = 'it_system';
     }
-    // Infrastructure issues -> Medium priority -> Maintenance Technician
     else if (formData.brokenChairs || formData.damagedTables ||
              formData.whiteboardDamaged || formData.whiteboardNeedsCleaning ||
              formData.junctionBoxDamaged) {
@@ -336,6 +336,16 @@ function DataCollector({ userName, onLogout }) {
     setError('');
 
     try {
+      console.log('\n📤 SUBMITTING ISSUE:');
+      console.log('User Type:', userType);
+      console.log('Location Category:', locationCategory);
+      console.log('Location Block:', formData.block);
+      console.log('Location Floor:', formData.floor);
+      console.log('Location Room:', formData.roomNumber);
+      console.log('Condition:', formData.condition);
+      console.log('Priority:', priority);
+      console.log('Technician Type:', technicianType);
+      
       if (process.env.REACT_APP_DEBUG === 'true') {
         console.debug('\n📤 Submitting Issue:');
         console.debug('Token:', sessionStorage.getItem('token')?.substring(0, 30) + '...');
