@@ -28,6 +28,37 @@ const TECHNICIAN_TYPE_LABELS = {
   general_support: 'General Support'
 };
 
+const formatAssignmentStatus = (status) => {
+  switch (status) {
+    case 'completed':
+      return 'Completed';
+    case 'in_progress':
+      return 'In Progress';
+    case 'assigned':
+      return 'Assigned';
+    default:
+      return status || 'Pending';
+  }
+};
+
+const getDisplayStatus = (issue) => {
+  const assignments = issue.technicianAssignments || [];
+
+  if (assignments.length === 0) {
+    return issue.status;
+  }
+
+  if (assignments.every((assignment) => assignment.status === 'completed')) {
+    return 'Completed';
+  }
+
+  if (assignments.some((assignment) => assignment.status === 'completed')) {
+    return 'Partially Completed';
+  }
+
+  return issue.status;
+};
+
 function DataCollector({ userName, onLogout }) {
   // Fallback to sessionStorage if userName prop is not available
   const displayName = userName || sessionStorage.getItem('userName');
@@ -1141,7 +1172,7 @@ function DataCollector({ userName, onLogout }) {
                   <div key={issue._id} className="issue-card">
                     <div className="issue-header">
                       <span className="issue-type">{issue.userType}</span>
-                      <span className="issue-status">{issue.status}</span>
+                      <span className="issue-status">{getDisplayStatus(issue)}</span>
                       <button 
                         className="delete-btn"
                         onClick={() => handleDeleteIssue(issue._id)}
@@ -1164,22 +1195,18 @@ function DataCollector({ userName, onLogout }) {
                     </p>
                     {issue.technicianAssignments?.length > 0 && (
                       <div className="issue-info">
-                        <strong>Technician Status:</strong>
+                        <strong>Technician Progress:</strong>
                         <div style={{ marginTop: '0.35rem', marginLeft: '10px' }}>
                           {issue.technicianAssignments.map((assignment, idx) => (
-                            <div key={`${assignment.technicianType}-${idx}`} style={{ marginBottom: '0.25rem' }}>
-                              {TECHNICIAN_TYPE_LABELS[assignment.technicianType] || assignment.technicianType}: {assignment.status}
+                            <div key={`${assignment.technicianType}-${idx}`} style={{ marginBottom: '0.4rem' }}>
+                              <strong>{TECHNICIAN_TYPE_LABELS[assignment.technicianType] || assignment.technicianType}:</strong>{' '}
+                              {formatAssignmentStatus(assignment.status)}
+                              {assignment.notes ? ` - ${assignment.notes}` : ''}
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
-                    {issue.technicianNotes && (
-                      <p className="issue-info">
-                        <strong>Technician Notes:</strong> <span style={{ fontStyle: 'italic' }}>{issue.technicianNotes}</span>
-                      </p>
-                    )}
-                    
                     {/* Specific Issues Found */}
                     <p className="issue-info">
                       <strong>Specific Issues Found:</strong>

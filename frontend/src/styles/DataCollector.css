@@ -434,44 +434,50 @@
 
 .issue-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
   margin-bottom: 0.75rem;
+}
+
+.issue-type,
+.issue-status,
+.delete-btn {
+  min-height: 46px;
+  padding: 0.3rem 1rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  box-sizing: border-box;
 }
 
 .issue-type {
   background: #3498db;
   color: white;
-  padding: 0.3rem 0.7rem;
-  border-radius: 3px;
-  font-size: 0.8rem;
-  font-weight: 600;
   text-transform: capitalize;
 }
 
 .issue-status {
   background: #27ae60;
   color: white;
-  padding: 0.3rem 0.7rem;
-  border-radius: 3px;
-  font-size: 0.8rem;
-  font-weight: 600;
   text-transform: capitalize;
+  text-align: center;
 }
 
 .delete-btn {
   background: #e74c3c;
   color: white;
-  padding: 0.3rem 0.7rem;
-  border-radius: 3px;
-  font-size: 0.8rem;
-  font-weight: 600;
   cursor: pointer;
   border: none;
   transition: all 0.2s ease;
-  display: inline-block;
-  line-height: 1;
   white-space: nowrap;
+  flex-basis: 100%;
+  max-width: 140px;
 }
 
 .delete-btn:hover {
