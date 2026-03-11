@@ -143,6 +143,7 @@ function Manager({ userName, onLogout }) {
     return TECHNICIAN_TYPES[techType] || techType;
   };
 
+  // (removed) priority class helper no longer needed since priority is plain text
   // Check if an issue is newly submitted (within last 2 minutes)
   const isNewIssue = (issue) => {
     if (!issue.timestamps?.submitted) return false;
@@ -150,6 +151,42 @@ function Manager({ userName, onLogout }) {
     const now = new Date();
     const minutesAgo = (now - submittedTime) / (1000 * 60);
     return minutesAgo < 2; // Highlight as "new" if submitted within 2 minutes
+  };
+
+  // Format location object into human-readable string
+  const formatLocation = (loc) => {
+    if (!loc) return '';
+    const parts = [];
+    if (loc.block) {
+      // capitalize block string (first letter only)
+      const b = loc.block.toLowerCase();
+      parts.push(b.charAt(0).toUpperCase() + b.slice(1));
+    }
+    if (loc.floor) {
+      const ordinals = {
+        1: 'first',
+        2: 'second',
+        3: 'third',
+        4: 'fourth',
+        5: 'fifth',
+        6: 'sixth',
+        7: 'seventh',
+        8: 'eighth',
+        9: 'ninth',
+        10: 'tenth'
+      };
+      const floorWordRaw = ordinals[loc.floor] || `${loc.floor}`;
+      // floor text all lowercase
+      parts.push(`${floorWordRaw} floor`);
+    }
+    if (loc.roomNumber) {
+      parts.push(`Room no ${loc.roomNumber}`);
+    }
+    if (loc.category) {
+      // lowercase category
+      parts.push(loc.category.toLowerCase());
+    }
+    return parts.filter(Boolean).join(', ');
   };
 
   // Auto-check for alerts every minute
@@ -509,21 +546,12 @@ function Manager({ userName, onLogout }) {
                         return (
                         <tr key={issue._id} className={`issue-row status-${issue.status} ${issue.responseAlert ? 'alert-response' : ''} ${issue.solveAlert ? 'alert-solve' : ''} ${isNewIssue(issue) ? 'new-issue-highlight' : ''}`}>
                           <td>IS{index + 1}</td>
-                          <td>
-                            {(() => {
-                              const block = issue.location?.block || 'N/A';
-                              const floor = issue.location?.floor || 'N/A';
-                              const room = issue.location?.roomNumber || 'N/A';
-                              console.debug(`Issue ${issue._id}: location data =`, { block, floor, room, fullLocation: issue.location });
-                              return `Block ${block}, Floor ${floor}, Room ${room}`;
-                            })()}
-                          </td>
+                          <td>{formatLocation(issue.location) || '-'}</td>
                           <td>{issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector'}</td>
                           <td>{issue.location?.category || 'N/A'}</td>
                           <td>
-                            <span className={`priority-badge priority-${issue.priority}`}>
-                              P{issue.priority}
-                            </span>
+                            {/* priority shown as plain lowercase text */}
+                            {issue.priority ? issue.priority.toLowerCase() : ''}
                           </td>
                           <td>
                             <span className="tech-badge">{getTechnicianTypeDisplay(issue.technicianType) || 'Pending'}</span>
@@ -587,12 +615,12 @@ function Manager({ userName, onLogout }) {
                       <tr key={issue._id} className="issue-row status-completed">
                         <td>IS{index + 1}</td>
                         <td>
-                          Block {issue.location?.block}, Floor {issue.location?.floor}, Room {issue.location?.roomNumber}
+                          {formatLocation(issue.location) || '-'}
                         </td>
                         <td>{issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector'}</td>
                         <td>{issue.location?.category}</td>
                         <td>
-                          <span className="priority-badge">{issue.priority || 'medium'}</span>
+                          {issue.priority ? issue.priority.toLowerCase() : ''}
                         </td>
                         <td>
                           <span className={`status-badge status-completed`}>
@@ -670,10 +698,11 @@ function Manager({ userName, onLogout }) {
                 {/* Location Details */}
                 <div className="detail-section">
                   <h4>Location Details</h4>
-                  <p><strong>Block:</strong> {selectedIssue.location?.block || 'N/A'}</p>
-                  <p><strong>Floor:</strong> {selectedIssue.location?.floor || 'N/A'}</p>
-                  <p><strong>Room Number:</strong> {selectedIssue.location?.roomNumber || 'N/A'}</p>
-                  <p><strong>Location Type:</strong> {selectedIssue.location?.category || 'N/A'}</p>
+                  {/* return to previous detailed layout for modal */}
+                <p><strong>Block:</strong> {selectedIssue.location?.block || 'N/A'}</p>
+                <p><strong>Floor:</strong> {selectedIssue.location?.floor || 'N/A'}</p>
+                <p><strong>Room Number:</strong> {selectedIssue.location?.roomNumber || 'N/A'}</p>
+                <p><strong>Location Type:</strong> {selectedIssue.location?.category || 'N/A'}</p>
                 </div>
 
                 {/* Issue Details - Overall Condition and Issue */}
@@ -771,7 +800,7 @@ function Manager({ userName, onLogout }) {
                     <p style={{ marginLeft: '20px' }}>No additional details</p>
                   )}
                   
-                  <p style={{ marginTop: '0.75rem', color: '#2c3e50' }}><strong>Priority:</strong> <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>P{selectedIssue.priority}</span></p>
+                  <p style={{ marginTop: '0.75rem', color: '#2c3e50' }}><strong>Priority:</strong> <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>{selectedIssue.priority?.toLowerCase()}</span></p>
                 </div>
               </div>
 
@@ -872,7 +901,7 @@ function Manager({ userName, onLogout }) {
                 }}
                 title="Delete this issue permanently"
               >
-                🗑️ Delete Issue
+                 Delete Issue
               </button>
               <button
                 className="cancel-btn"
