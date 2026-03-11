@@ -4,6 +4,12 @@ import Navbar from '../components/Navbar';
 // import { issueAPI } from '../services/api';
 import { technicianAPI } from '../services/api';
 
+const WARNING_THRESHOLD_HOURS = 5;
+const WARNING_COPY = {
+  notSolved: '⚠ Issue not solved yet. Please take action.',
+  noResponse: '⚠ No response from technician.'
+};
+
 
 
 function Technician({ userName, onLogout }) {
@@ -123,6 +129,24 @@ function Technician({ userName, onLogout }) {
     return `status-${status}`;
   };
 
+  const getTaskWarningDetails = (task) => {
+    if (!['assigned', 'in_progress'].includes(task.status)) {
+      return { status: null, message: '', isDelayed: false, hoursOpen: 0 };
+    }
+
+    const startedAt = task.timestamps?.assigned || task.timestamps?.submitted;
+    const hoursOpen = startedAt ? (Date.now() - new Date(startedAt).getTime()) / (1000 * 60 * 60) : 0;
+    const hasTechnicianResponse = Boolean(task.technicianNotes?.trim());
+    const warningStatus = hasTechnicianResponse ? 'notSolved' : 'noResponse';
+
+    return {
+      status: hoursOpen >= WARNING_THRESHOLD_HOURS ? warningStatus : null,
+      message: hoursOpen >= WARNING_THRESHOLD_HOURS ? WARNING_COPY[warningStatus] : '',
+      isDelayed: hoursOpen >= WARNING_THRESHOLD_HOURS,
+      hoursOpen
+    };
+  };
+
   // const getPriorityColor = (priority) => {
   //   switch (priority) {
   //     case 'high':
@@ -147,6 +171,8 @@ function Technician({ userName, onLogout }) {
   }
 };
 
+  const delayedTasks = tasks.filter((task) => getTaskWarningDetails(task).isDelayed);
+
 
   return (
     <div className="technician-container">
@@ -160,6 +186,11 @@ function Technician({ userName, onLogout }) {
 
         <div className="technician-content">
           {loading && <div className="loading-message" style={{ padding: '20px' }}>Loading tasks...</div>}
+          {delayedTasks.length > 0 && (
+            <div className="technician-warning-alert">
+              <strong>⚠ Warning:</strong> {delayedTasks.length} task{delayedTasks.length > 1 ? 's are' : ' is'} delayed for more than {WARNING_THRESHOLD_HOURS} hours.
+            </div>
+          )}
           <div className="dashboard-stats">
             <div className="stat-card">
               <h4>Total Tasks</h4>
@@ -176,6 +207,10 @@ function Technician({ userName, onLogout }) {
             <div className="stat-card">
               <h4>Completed</h4>
               <p className="stat-number">{tasks.filter(t => t.status === 'completed').length}</p>
+            </div>
+            <div className="stat-card warning-stat-card">
+              <h4>Delayed Warnings</h4>
+              <p className="stat-number">{delayedTasks.length}</p>
             </div>
           </div>
 
@@ -223,8 +258,10 @@ function Technician({ userName, onLogout }) {
                 <p>No tasks with this status</p>
               </div>
             ) : (
-              filteredTasks.map(task => (
-                <div key={task._id || task.id} className="task-card">
+              filteredTasks.map(task => {
+                const warning = getTaskWarningDetails(task);
+                return (
+                <div key={task._id || task.id} className={`task-card ${warning.isDelayed ? 'task-card-delayed' : ''}`}>
                   <div className="task-header">
                     <h3>
                       <span className="location-type">{task.userType || task.locationCategory}</span>
@@ -256,6 +293,11 @@ function Technician({ userName, onLogout }) {
                         <strong>Notes:</strong> {task.data.otherSuggestions}
                       </p>
                     )}
+                    {warning.status && (
+                      <div className={`warning-note ${warning.status}`}>
+                        {warning.message}
+                      </div>
+                    )}
                   </div>
 
                   <div className="task-footer">
@@ -279,7 +321,8 @@ function Technician({ userName, onLogout }) {
                     View Details
                   </button>
                 </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -296,6 +339,24 @@ function Technician({ userName, onLogout }) {
 
             <div className="modal-body">
               <div className="task-details">
+                {(() => {
+                  const warning = getTaskWarningDetails(selectedTask);
+                  if (!warning.status) {
+                    return null;
+                  }
+
+                  return (
+                    <div className={`warning-note-panel ${warning.status}`}>
+                      <p>{warning.message}</p>
+                      {warning.isDelayed && (
+                        <p className="warning-meta">
+                          Delayed for more than {WARNING_THRESHOLD_HOURS} hours.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* Reporter Information - Dynamic based on userType */}
                 <div className="detail-section">
                   <h4>Reporter Information</h4>

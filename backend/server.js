@@ -4,6 +4,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const { ensureDefaultAccounts } = require('./controllers/authController');
 
 const app = express();
 
@@ -48,6 +49,7 @@ process.on('uncaughtException', (err) => {
 (async function start() {
   try {
     await connectDB();
+    await ensureDefaultAccounts();
 
     app.use(express.json());
 

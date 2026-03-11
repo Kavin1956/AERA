@@ -73,6 +73,97 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+const hashPassword = (pwd) => bcrypt.hash(pwd, 10);
+
+const buildDefaultUsers = async () => ([
+  {
+    fullName: 'Alice Manager',
+    email: 'manager@aera.edu',
+    username: 'manager_alice',
+    password: await hashPassword('managerpass123'),
+    role: 'manager'
+  },
+  {
+    fullName: 'Bob Electrical Technician',
+    email: 'tech_electrical@aera.edu',
+    username: 'tech_electrical_bob',
+    password: await hashPassword('electricalpass123'),
+    role: 'technician',
+    technicianType: 'electrical'
+  },
+  {
+    fullName: 'Charlie IT Technician',
+    email: 'tech_it@aera.edu',
+    username: 'tech_it_charlie',
+    password: await hashPassword('itpass123'),
+    role: 'technician',
+    technicianType: 'it_system'
+  },
+  {
+    fullName: 'Diana Maintenance Technician',
+    email: 'tech_maintenance@aera.edu',
+    username: 'tech_maintenance_diana',
+    password: await hashPassword('maintenancepass123'),
+    role: 'technician',
+    technicianType: 'maintenance'
+  },
+  {
+    fullName: 'Evan Safety Technician',
+    email: 'tech_safety@aera.edu',
+    username: 'tech_safety_evan',
+    password: await hashPassword('safetypass123'),
+    role: 'technician',
+    technicianType: 'safety'
+  },
+  {
+    fullName: 'Frank General Support Technician',
+    email: 'tech_support@aera.edu',
+    username: 'tech_support_frank',
+    password: await hashPassword('supportpass123'),
+    role: 'technician',
+    technicianType: 'general_support'
+  },
+  {
+    fullName: 'Grace Data Collector',
+    email: 'dc_grace@aera.edu',
+    username: 'dc_grace',
+    password: await hashPassword('dcpass123'),
+    role: 'data_collector'
+  },
+  {
+    fullName: 'Hannah Data Collector',
+    email: 'dc_hannah@aera.edu',
+    username: 'dc_hannah',
+    password: await hashPassword('dcpass123'),
+    role: 'data_collector'
+  },
+  {
+    fullName: 'Isaac Data Collector',
+    email: 'dc_isaac@aera.edu',
+    username: 'dc_isaac',
+    password: await hashPassword('dcpass123'),
+    role: 'data_collector'
+  },
+  {
+    fullName: 'Demo User',
+    email: 'demo@aera.edu',
+    username: 'demo',
+    password: await hashPassword('demo123'),
+    role: 'data_collector'
+  }
+]);
+
+exports.ensureDefaultAccounts = async () => {
+  const existingUsers = await User.countDocuments();
+  if (existingUsers > 0) {
+    return;
+  }
+
+  const usersToCreate = await buildDefaultUsers();
+  await User.insertMany(usersToCreate);
+  console.log('Seeded default accounts for local development.');
+};
+
 // ================= REGISTER =================
 exports.register = async (req, res) => {
   try {
@@ -184,94 +275,7 @@ exports.seedAccounts = async (req, res) => {
     await User.deleteMany({});
     console.log('🗑️  Cleared existing users');
 
-    const hashPassword = async (pwd) => {
-      return await bcrypt.hash(pwd, 10);
-    };
-
-    const usersToCreate = [
-      // 1 Manager
-      {
-        fullName: 'Alice Manager',
-        email: 'manager@aera.edu',
-        username: 'manager_alice',
-        password: await hashPassword('managerpass123'),
-        role: 'manager'
-      },
-
-      // 5 Technicians with new types
-      {
-        fullName: 'Bob Electrical Technician',
-        email: 'tech_electrical@aera.edu',
-        username: 'tech_electrical_bob',
-        password: await hashPassword('electricalpass123'),
-        role: 'technician',
-        technicianType: 'electrical'
-      },
-      {
-        fullName: 'Charlie IT Technician',
-        email: 'tech_it@aera.edu',
-        username: 'tech_it_charlie',
-        password: await hashPassword('itpass123'),
-        role: 'technician',
-        technicianType: 'it_system'
-      },
-      {
-        fullName: 'Diana Maintenance Technician',
-        email: 'tech_maintenance@aera.edu',
-        username: 'tech_maintenance_diana',
-        password: await hashPassword('maintenancepass123'),
-        role: 'technician',
-        technicianType: 'maintenance'
-      },
-      {
-        fullName: 'Evan Safety Technician',
-        email: 'tech_safety@aera.edu',
-        username: 'tech_safety_evan',
-        password: await hashPassword('safetypass123'),
-        role: 'technician',
-        technicianType: 'safety'
-      },
-      {
-        fullName: 'Frank General Support Technician',
-        email: 'tech_support@aera.edu',
-        username: 'tech_support_frank',
-        password: await hashPassword('supportpass123'),
-        role: 'technician',
-        technicianType: 'general_support'
-      },
-
-      // 3 Data Collectors
-      {
-        fullName: 'Grace Data Collector',
-        email: 'dc_grace@aera.edu',
-        username: 'dc_grace',
-        password: await hashPassword('dcpass123'),
-        role: 'data_collector'
-      },
-      {
-        fullName: 'Hannah Data Collector',
-        email: 'dc_hannah@aera.edu',
-        username: 'dc_hannah',
-        password: await hashPassword('dcpass123'),
-        role: 'data_collector'
-      },
-      {
-        fullName: 'Isaac Data Collector',
-        email: 'dc_isaac@aera.edu',
-        username: 'dc_isaac',
-        password: await hashPassword('dcpass123'),
-        role: 'data_collector'
-      },
-
-      // Demo account for testing
-      {
-        fullName: 'Demo User',
-        email: 'demo@aera.edu',
-        username: 'demo',
-        password: await hashPassword('demo123'),
-        role: 'data_collector'
-      }
-    ];
+    const usersToCreate = await buildDefaultUsers();
 
     await User.insertMany(usersToCreate);
     console.log('✅ Created all accounts');

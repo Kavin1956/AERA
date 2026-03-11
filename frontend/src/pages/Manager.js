@@ -3,6 +3,12 @@ import '../styles/Manager.css';
 import Navbar from '../components/Navbar';
 import { issueAPI } from '../services/api';
 
+const WARNING_THRESHOLD_HOURS = 5;
+const WARNING_COPY = {
+  notSolved: '⚠ Issue not solved yet. Please take action.',
+  noResponse: '⚠ No response from technician.'
+};
+
 function Manager({ userName, onLogout }) {
   // Fallback to sessionStorage if userName prop is not available
   const displayName = userName || sessionStorage.getItem('userName');
@@ -189,41 +195,23 @@ function Manager({ userName, onLogout }) {
     return parts.filter(Boolean).join(', ');
   };
 
-  // Auto-check for alerts every minute
-  useEffect(() => {
-    const alertInterval = setInterval(() => {
-      setIssues(prevIssues => {
-        const updatedIssues = prevIssues.map(issue => {
-          if (issue.status === 'submitted') {
-            const hoursPassed = (new Date() - new Date(issue.timestamps?.submitted)) / (1000 * 60 * 60);
-            if (hoursPassed >= 1 && !issue.alerts?.includes('responded')) {
-              return {
-                ...issue,
-                alerts: [...(issue.alerts || []), 'responded'],
-                responseAlert: true
-              };
-            }
-          }
-          
-          if (issue.status === 'assigned') {
-            const hoursPassed = (new Date() - new Date(issue.timestamps?.submitted)) / (1000 * 60 * 60);
-            if (hoursPassed >= 5 && !issue.alerts?.includes('solved')) {
-              return {
-                ...issue,
-                alerts: [...(issue.alerts || []), 'solved'],
-                solveAlert: true
-              };
-            }
-          }
-          
-          return issue;
-        });
-        return updatedIssues;
-      });
-    }, 60000); // Check every minute
+  const getIssueWarningDetails = (issue) => {
+    if (!['assigned', 'in_progress'].includes(issue.status)) {
+      return { status: null, message: '', isDelayed: false, hoursOpen: 0 };
+    }
 
-    return () => clearInterval(alertInterval);
-  }, []);
+    const startedAt = issue.timestamps?.assigned || issue.timestamps?.submitted;
+    const hoursOpen = startedAt ? (Date.now() - new Date(startedAt).getTime()) / (1000 * 60 * 60) : 0;
+    const hasTechnicianResponse = Boolean(issue.technicianNotes?.trim());
+    const warningStatus = hasTechnicianResponse ? 'notSolved' : 'noResponse';
+
+    return {
+      status: hoursOpen >= WARNING_THRESHOLD_HOURS ? warningStatus : null,
+      message: hoursOpen >= WARNING_THRESHOLD_HOURS ? WARNING_COPY[warningStatus] : '',
+      isDelayed: hoursOpen >= WARNING_THRESHOLD_HOURS,
+      hoursOpen
+    };
+  };
 
   // Calculate analytics
   useEffect(() => {
@@ -407,6 +395,7 @@ function Manager({ userName, onLogout }) {
     return issues.filter(i => i.status === 'completed');
   };
 
+  const delayedIssues = issues.filter((issue) => getIssueWarningDetails(issue).isDelayed);
   const currentTabIssues = activeTab === 'current' ? getFilteredIssues() : null;
   const completedTabIssues = activeTab === 'history' ? getCompletedIssues() : null;
 
@@ -424,6 +413,11 @@ function Manager({ userName, onLogout }) {
           {loading && <div className="loading-spinner">Loading issues...</div>}
           {error && <div className="error-message">{error}</div>}
           {newIssueAlert && <div className="success-message" style={{ animation: 'slideDown 0.3s ease-in-out' }}>{newIssueAlert}</div>}
+          {delayedIssues.length > 0 && (
+            <div className="warning-dashboard-alert">
+              <strong>⚠ Manager warning:</strong> {delayedIssues.length} delayed issue{delayedIssues.length > 1 ? 's' : ''} need attention.
+            </div>
+          )}
           
           <div className="dashboard-stats">
             <div className="stat-card">
@@ -494,6 +488,36 @@ function Manager({ userName, onLogout }) {
           {/* Current Issues Tab */}
           {activeTab === 'current' && (
             <>
+              {delayedIssues.length > 0 && (
+                <div className="delayed-issues-section">
+                  <div className="delayed-issues-header">
+                    <h3>Delayed Issues Warning</h3>
+                    <p>Issues that have stayed in a warning state for more than {WARNING_THRESHOLD_HOURS} hours.</p>
+                  </div>
+                  <div className="delayed-issues-list">
+                    {delayedIssues.map((issue) => {
+                      const warning = getIssueWarningDetails(issue);
+                      return (
+                        <div key={issue._id} className="delayed-issue-card">
+                          <div>
+                            <strong>{formatLocation(issue.location) || 'Issue location unavailable'}</strong>
+                            <p>{issue.location?.category || 'Uncategorized issue'}</p>
+                          </div>
+                          <div>
+                            <span className={`warning-note ${warning.status}`}>
+                              {warning.message}
+                            </span>
+                            <p className="delayed-issue-time">
+                              Open for {Math.floor(warning.hoursOpen)} hour{Math.floor(warning.hoursOpen) === 1 ? '' : 's'}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="manager-controls">
                 <div className="filter-section">
                   <label>Filter by Status:</label>
@@ -542,9 +566,9 @@ function Manager({ userName, onLogout }) {
                     </thead>
                     <tbody>
                       {currentTabIssues?.map((issue, index) => {
-                        // eslint-disable-next-line no-unused-vars
+                        const warning = getIssueWarningDetails(issue);
                         return (
-                        <tr key={issue._id} className={`issue-row status-${issue.status} ${issue.responseAlert ? 'alert-response' : ''} ${issue.solveAlert ? 'alert-solve' : ''} ${isNewIssue(issue) ? 'new-issue-highlight' : ''}`}>
+                        <tr key={issue._id} className={`issue-row status-${issue.status} ${warning.isDelayed ? 'warning-delayed-row' : ''} ${isNewIssue(issue) ? 'new-issue-highlight' : ''}`}>
                           <td>IS{index + 1}</td>
                           <td>{formatLocation(issue.location) || '-'}</td>
                           <td>{issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector'}</td>
@@ -560,6 +584,11 @@ function Manager({ userName, onLogout }) {
                             <span className={`status-badge status-${issue.status}`}>
                               {issue.status === 'submitted' ? 'New' : issue.status === 'assigned' ? 'In Progress' : issue.status}
                             </span>
+                            {warning.status && (
+                              <div className={`warning-note ${warning.status}`}>
+                                {warning.message}
+                              </div>
+                            )}
                             {issue.responseAlert && <span className="alert-badge">⚠️ No Response</span>}
                             {issue.solveAlert && <span className="alert-badge solve">🚨 Not Solved</span>}
                             {isNewIssue(issue) && <span className="alert-badge" style={{ backgroundColor: '#10b981' }}>✨ JUST SUBMITTED</span>}
@@ -662,6 +691,24 @@ function Manager({ userName, onLogout }) {
 
             <div className="modal-body">
               <div className="issue-details">
+                {(() => {
+                  const warning = getIssueWarningDetails(selectedIssue);
+                  if (!warning.status) {
+                    return null;
+                  }
+
+                  return (
+                    <div className={`warning-note-panel ${warning.status}`}>
+                      <p>{warning.message}</p>
+                      {warning.isDelayed && (
+                        <p className="warning-meta">
+                          Delayed for more than {WARNING_THRESHOLD_HOURS} hours.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* Reporter Information - Dynamic based on userType */}
                 <div className="detail-section">
                   <h4>Reporter Information</h4>
@@ -853,7 +900,7 @@ function Manager({ userName, onLogout }) {
               )}
 
               {/* Assigned Status Section */}
-              {selectedIssue.status === 'assigned' && selectedIssue.solveAlert && (
+              {getIssueWarningDetails(selectedIssue).isDelayed && (
                 <div className="alert-section">
                   <h4>⏰ Solution Deadline Exceeded</h4>
                   <p>This issue has not been resolved within 5 hours. Send warning to technician?</p>
@@ -880,7 +927,7 @@ function Manager({ userName, onLogout }) {
                   >
                     Mark as Completed
                   </button>
-                  {selectedIssue.solveAlert && (
+                  {getIssueWarningDetails(selectedIssue).isDelayed && (
                     <button
                       className="warning-btn"
                       onClick={() => sendWarningAlert(selectedIssue._id)}
