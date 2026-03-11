@@ -1,6 +1,12 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://aera-4y8m.onrender.com/api';
+const isLocalFrontend =
+  typeof window !== 'undefined' &&
+  ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+const API_BASE_URL =
+  process.env.REACT_APP_API_URL ||
+  (isLocalFrontend ? 'http://localhost:5000/api' : 'https://aera-4y8m.onrender.com/api');
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -9,6 +15,19 @@ const api = axios.create({
   },
   timeout: 15000 // 15 second timeout for Render backend
 });
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isRetriableAuthError = (error) => {
+  if (!error) return false;
+
+  if (error.code === 'ECONNABORTED' || error.message?.includes('Network Error')) {
+    return true;
+  }
+
+  const status = error.response?.status;
+  return status === 502 || status === 503 || status === 504;
+};
 
 // Add token to requests if it exists
 api.interceptors.request.use(
@@ -27,8 +46,25 @@ api.interceptors.request.use(
 // Auth API calls
 export const authAPI = {
   register: (userData) => api.post('/auth/register', userData),
-  login: (username, password) =>
-    api.post('/auth/login', { username, password })
+  login: async (username, password) => {
+    const requestBody = { username, password };
+
+    try {
+      return await api.post('/auth/login', requestBody, {
+        timeout: 35000
+      });
+    } catch (error) {
+      if (!isRetriableAuthError(error)) {
+        throw error;
+      }
+
+      await delay(2500);
+
+      return api.post('/auth/login', requestBody, {
+        timeout: 35000
+      });
+    }
+  }
 };
 
 // Issue API calls

@@ -20,6 +20,14 @@ import '../styles/DataCollector.css';
 import Navbar from '../components/Navbar';
 import { issueAPI } from '../services/api';
 
+const TECHNICIAN_TYPE_LABELS = {
+  maintenance: 'Maintenance',
+  it_system: 'IT / System',
+  electrical: 'Electrical',
+  safety: 'Safety',
+  general_support: 'General Support'
+};
+
 function DataCollector({ userName, onLogout }) {
   // Fallback to sessionStorage if userName prop is not available
   const displayName = userName || sessionStorage.getItem('userName');
@@ -1154,6 +1162,23 @@ function DataCollector({ userName, onLogout }) {
                     <p className="issue-info">
                       <strong>Priority:</strong> <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>P{issue.priority}</span>
                     </p>
+                    {issue.technicianAssignments?.length > 0 && (
+                      <div className="issue-info">
+                        <strong>Technician Status:</strong>
+                        <div style={{ marginTop: '0.35rem', marginLeft: '10px' }}>
+                          {issue.technicianAssignments.map((assignment, idx) => (
+                            <div key={`${assignment.technicianType}-${idx}`} style={{ marginBottom: '0.25rem' }}>
+                              {TECHNICIAN_TYPE_LABELS[assignment.technicianType] || assignment.technicianType}: {assignment.status}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {issue.technicianNotes && (
+                      <p className="issue-info">
+                        <strong>Technician Notes:</strong> <span style={{ fontStyle: 'italic' }}>{issue.technicianNotes}</span>
+                      </p>
+                    )}
                     
                     {/* Specific Issues Found */}
                     <p className="issue-info">

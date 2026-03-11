@@ -31,7 +31,7 @@ function Manager({ userName, onLogout }) {
   const [selectedIssueDisplayId, setSelectedIssueDisplayId] = useState('');
   const [showDetails, setShowDetails] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
-  const [selectedTechnicianType, setSelectedTechnicianType] = useState('');
+  const [selectedTechnicianTypes, setSelectedTechnicianTypes] = useState([]);
   const [analysisRisk, setAnalysisRisk] = useState('');
   const [analysisNotes, setAnalysisNotes] = useState('');
   const [activeTab, setActiveTab] = useState('current');
@@ -149,6 +149,63 @@ function Manager({ userName, onLogout }) {
     return TECHNICIAN_TYPES[techType] || techType;
   };
 
+  const getTechnicianTypesDisplay = (issue) => {
+    const types = issue?.technicianTypes?.length ? issue.technicianTypes : (issue?.technicianType ? [issue.technicianType] : []);
+    if (types.length === 0) return 'Pending';
+    return types.map((type) => getTechnicianTypeDisplay(type)).join(', ');
+  };
+
+  const deriveRecommendedTechnicianTypes = (issue) => {
+    if (!issue) return [];
+
+    if (issue.technicianTypes?.length) {
+      return issue.technicianTypes;
+    }
+
+    const issueCodes = new Set(issue.issues || []);
+    const recommended = new Set();
+
+    const issueGroups = {
+      maintenance: ['whiteboardNeedsCleaning', 'whiteboardDamaged', 'brokenChairs', 'damagedTables'],
+      it_system: ['systemSlowPerformance', 'systemNotWorking', 'projectorNotWorking', 'projectorNotAvailable', 'slowInternet', 'noInternet'],
+      electrical: ['temperatureTooHot', 'temperatureTooCold', 'dustyEnvironment', 'poorVentilation', 'powerSupplyFluctuating', 'powerFailure', 'acNotWorking', 'dimLighting', 'lightingNotWorking', 'fanNotWorking', 'junctionBoxExtraAvailable', 'junctionBoxDamaged'],
+      safety: ['fireEquipmentNotAvailable', 'exitBlocked', 'looseWires', 'damagedSwitches']
+    };
+
+    Object.entries(issueGroups).forEach(([techType, codes]) => {
+      if (codes.some((code) => issueCodes.has(code))) {
+        recommended.add(techType);
+      }
+    });
+
+    if ((issue.otherSuggestions || issue.data?.otherSuggestions || '').trim()) {
+      recommended.add('general_support');
+    }
+
+    if (recommended.size === 0 && issue.technicianType) {
+      recommended.add(issue.technicianType);
+    }
+
+    return [...recommended];
+  };
+
+  const openIssueDetails = (issue, displayId) => {
+    setSelectedIssue(issue);
+    setSelectedIssueDisplayId(displayId);
+    setSelectedTechnicianTypes(deriveRecommendedTechnicianTypes(issue));
+    setAnalysisRisk(issue.risk || '');
+    setAnalysisNotes(issue.analysisNotes || '');
+    setShowDetails(true);
+  };
+
+  const toggleTechnicianType = (techType) => {
+    setSelectedTechnicianTypes((current) =>
+      current.includes(techType)
+        ? current.filter((type) => type !== techType)
+        : [...current, techType]
+    );
+  };
+
   // (removed) priority class helper no longer needed since priority is plain text
   // Check if an issue is newly submitted (within last 2 minutes)
   const isNewIssue = (issue) => {
@@ -192,6 +249,46 @@ function Manager({ userName, onLogout }) {
       // lowercase category
       parts.push(loc.category.toLowerCase());
     }
+    return parts.filter(Boolean).join(', ');
+  };
+
+  const formatLocationForTable = (loc) => {
+    if (!loc) return '';
+    const parts = [];
+
+    if (loc.block) {
+      parts.push(String(loc.block).toUpperCase());
+    }
+
+    if (loc.floor) {
+      const floorValue = String(loc.floor).trim().toLowerCase();
+      const floorLabels = {
+        '0': 'Ground Floor',
+        'ground': 'Ground Floor',
+        'ground floor': 'Ground Floor',
+        '1': 'First Floor',
+        '1st': 'First Floor',
+        '1st floor': 'First Floor',
+        'first': 'First Floor',
+        'first floor': 'First Floor',
+        '2': 'Second Floor',
+        '2nd': 'Second Floor',
+        '2nd floor': 'Second Floor',
+        'second': 'Second Floor',
+        'second floor': 'Second Floor',
+        '3': 'Third Floor',
+        '3rd': 'Third Floor',
+        '3rd floor': 'Third Floor',
+        'third': 'Third Floor',
+        'third floor': 'Third Floor'
+      };
+      parts.push(floorLabels[floorValue] || String(loc.floor));
+    }
+
+    if (loc.roomNumber) {
+      parts.push(`Room no : ${loc.roomNumber}`);
+    }
+
     return parts.filter(Boolean).join(', ');
   };
 
@@ -265,17 +362,20 @@ function Manager({ userName, onLogout }) {
 
   const handleSaveAnalysisAndAssign = async (issueId) => {
     try {
-      const typeToAssign = selectedTechnicianType || selectedIssue?.technicianType;
+      const typesToAssign = selectedTechnicianTypes.length > 0
+        ? selectedTechnicianTypes
+        : deriveRecommendedTechnicianTypes(selectedIssue);
       const payload = {
         risk: analysisRisk || undefined,
         analysisNotes: analysisNotes || undefined,
-        technicianType: typeToAssign || undefined,
+        technicianType: typesToAssign[0] || undefined,
+        technicianTypes: typesToAssign,
         status: 'assigned'
       };
 
       console.log('📤 Assigning issue:', issueId);
       console.log('   Payload:', payload);
-      console.log('   selectedTechnicianType:', typeToAssign);
+      console.log('   selectedTechnicianTypes:', typesToAssign);
 
       const response = await issueAPI.updateIssueStatus(issueId, payload);
       console.log('✅ Response received:', response.data);
@@ -287,7 +387,7 @@ function Manager({ userName, onLogout }) {
       setIssues(issues.map(i => i._id === issueId ? response.data : i));
 
       alert('Analysis saved and issue assigned.');
-      setSelectedTechnicianType('');
+      setSelectedTechnicianTypes([]);
       setAnalysisRisk('');
       setAnalysisNotes('');
       setShowDetails(false);
@@ -570,7 +670,7 @@ function Manager({ userName, onLogout }) {
                         return (
                         <tr key={issue._id} className={`issue-row status-${issue.status} ${warning.isDelayed ? 'warning-delayed-row' : ''} ${isNewIssue(issue) ? 'new-issue-highlight' : ''}`}>
                           <td>IS{index + 1}</td>
-                          <td>{formatLocation(issue.location) || '-'}</td>
+                          <td>{formatLocationForTable(issue.location) || '-'}</td>
                           <td>{issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector'}</td>
                           <td>{issue.location?.category || 'N/A'}</td>
                           <td>
@@ -578,7 +678,7 @@ function Manager({ userName, onLogout }) {
                             {issue.priority ? issue.priority.toLowerCase() : ''}
                           </td>
                           <td>
-                            <span className="tech-badge">{getTechnicianTypeDisplay(issue.technicianType) || 'Pending'}</span>
+                            <span className="tech-badge">{getTechnicianTypesDisplay(issue)}</span>
                           </td>
                           <td>
                             <span className={`status-badge status-${issue.status}`}>
@@ -599,9 +699,7 @@ function Manager({ userName, onLogout }) {
                               className="view-btn"
                               onClick={() => {
                                 console.log('🔍 SELECTED ISSUE DATA:', JSON.stringify(issue, null, 2));
-                                setSelectedIssue(issue);
-                                setSelectedIssueDisplayId(`IS${index + 1}`);
-                                setShowDetails(true);
+                                openIssueDetails(issue, `IS${index + 1}`);
                               }}
                             >
                               View
@@ -644,7 +742,7 @@ function Manager({ userName, onLogout }) {
                       <tr key={issue._id} className="issue-row status-completed">
                         <td>IS{index + 1}</td>
                         <td>
-                          {formatLocation(issue.location) || '-'}
+                          {formatLocationForTable(issue.location) || '-'}
                         </td>
                         <td>{issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector'}</td>
                         <td>{issue.location?.category}</td>
@@ -662,9 +760,7 @@ function Manager({ userName, onLogout }) {
                           <button
                             className="view-btn"
                             onClick={() => {
-                              setSelectedIssue(issue);
-                              setSelectedIssueDisplayId(`IS${index + 1}`);
-                              setShowDetails(true);
+                              openIssueDetails(issue, `IS${index + 1}`);
                             }}
                           >
                             View
@@ -771,7 +867,7 @@ function Manager({ userName, onLogout }) {
                         </>
                       )}
                       {selectedIssue.technicianNotes && (
-                        <p style={{ margin: '8px 0 3px 0', color: '#2980b9', fontWeight: '500' }}>🛠️ Technician Update: <span style={{ color: '#555', fontStyle: 'italic', marginLeft: 4 }}>{selectedIssue.technicianNotes}</span></p>
+                        <p style={{ margin: '8px 0 3px 0', color: '#2980b9', fontWeight: '500' }}>Technician Notes: <span style={{ color: '#555', fontStyle: 'italic', marginLeft: 4 }}>{selectedIssue.technicianNotes}</span></p>
                       )}
                     </div>
                   ) : selectedIssue.data ? (
@@ -849,6 +945,18 @@ function Manager({ userName, onLogout }) {
                   
                   <p style={{ marginTop: '0.75rem', color: '#2c3e50' }}><strong>Priority:</strong> <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>{selectedIssue.priority?.toLowerCase()}</span></p>
                 </div>
+
+                {selectedIssue.technicianAssignments?.length > 0 && (
+                  <div className="detail-section">
+                    <h4>Technician Progress</h4>
+                    {selectedIssue.technicianAssignments.map((assignment, idx) => (
+                      <p key={`${assignment.technicianType}-${idx}`}>
+                        <strong>{getTechnicianTypeDisplay(assignment.technicianType)}:</strong> {assignment.status}
+                        {assignment.notes ? ` - ${assignment.notes}` : ''}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Manager Assignment Section - Only for submitted issues */}
@@ -883,18 +991,21 @@ function Manager({ userName, onLogout }) {
 
                   <div className="form-group">
                     <label>Assign to Technician</label>
-                    <select
-                      value={selectedTechnicianType}
-                      onChange={(e) => setSelectedTechnicianType(e.target.value)}
-                      className="form-input form-select"
-                    >
-                      <option value="">Select technician type...</option>
-                      <option value="electrical">Electrical Technician</option>
-                      <option value="it_system">IT / System Technician</option>
-                      <option value="maintenance">Maintenance Technician</option>
-                      <option value="safety">Safety Technician</option>
-                      <option value="general_support">General Support Technician</option>
-                    </select>
+                    <div className="form-input" style={{ display: 'grid', gap: '0.6rem', padding: '1rem' }}>
+                      {Object.entries(TECHNICIAN_TYPES).map(([techType, label]) => (
+                        <label key={techType} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedTechnicianTypes.includes(techType)}
+                            onChange={() => toggleTechnicianType(techType)}
+                          />
+                          <span>{label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <p style={{ marginTop: '0.5rem', color: '#64748b', fontSize: '0.95rem' }}>
+                      Recommended: {selectedTechnicianTypes.length > 0 ? selectedTechnicianTypes.map((type) => getTechnicianTypeDisplay(type)).join(', ') : 'Select one or more technician types'}
+                    </p>
                   </div>
                 </div>
               )}

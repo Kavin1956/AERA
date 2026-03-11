@@ -28,6 +28,7 @@ const issueSchema = new mongoose.Schema({
   priority: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Medium' },
 
   technicianType: String,
+  technicianTypes: [String],
   issueType: String, // e.g., Electrical / Networking / Other
   risk: { type: String, enum: ['Low', 'Moderate', 'High'] },
   analysisNotes: String,
@@ -46,6 +47,32 @@ const issueSchema = new mongoose.Schema({
     ref: 'User',
     default: null
   },
+  assignedTechnicians: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
+  ],
+  technicianAssignments: [
+    {
+      technicianType: String,
+      technicianId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+      },
+      status: {
+        type: String,
+        enum: ['assigned', 'in_progress', 'completed'],
+        default: 'assigned'
+      },
+      notes: String,
+      timestamps: {
+        assigned: Date,
+        completed: Date
+      }
+    }
+  ],
 
 
   data: Object,

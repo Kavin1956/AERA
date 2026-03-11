@@ -3,6 +3,26 @@ import { useNavigate, Link } from 'react-router-dom';
 import '../styles/Login.css';
 import { authAPI } from '../services/api';
 
+const getLoginErrorMessage = (err) => {
+  const status = err.response?.status;
+
+  if (status === 400 || status === 401 || status === 403 || status === 404) {
+    return err.response?.data?.message || 'Login failed. Please check your credentials.';
+  }
+
+  if (
+    err.code === 'ECONNABORTED' ||
+    err.message?.includes('Network Error') ||
+    status === 502 ||
+    status === 503 ||
+    status === 504
+  ) {
+    return 'Backend is waking up on Render. Please wait a few seconds and try again.';
+  }
+
+  return err.response?.data?.message || 'Login failed due to a server issue. Please try again.';
+};
+
 function Login({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -42,7 +62,7 @@ function Login({ onLogin }) {
         navigate('/technician');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+      setError(getLoginErrorMessage(err));
       console.error('Login error:', err);
     } finally {
       setLoading(false);

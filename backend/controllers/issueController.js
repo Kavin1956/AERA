@@ -1,6 +1,91 @@
 const Issue = require('../models/issue');
 const User = require('../models/User');
 
+const normalizeTechnicianTypes = (technicianTypes = [], technicianType) => {
+  const rawTypes = Array.isArray(technicianTypes) ? technicianTypes : [];
+  const merged = [...rawTypes, technicianType].filter(Boolean);
+  return [...new Set(merged.map((type) => String(type).toLowerCase().trim()).filter(Boolean))];
+};
+
+const TECHNICIAN_TYPE_USERNAME_MAP = {
+  electrical: 'tech_electrical_bob',
+  it_system: 'tech_it_charlie',
+  maintenance: 'tech_maintenance_diana',
+  safety: 'tech_safety_evan',
+  general_support: 'tech_support_frank'
+};
+
+const TECHNICIAN_ISSUE_CODES = {
+  maintenance: ['whiteboardNeedsCleaning', 'whiteboardDamaged', 'brokenChairs', 'damagedTables'],
+  it_system: ['systemSlowPerformance', 'systemNotWorking', 'projectorNotWorking', 'projectorNotAvailable', 'slowInternet', 'noInternet'],
+  electrical: ['temperatureTooHot', 'temperatureTooCold', 'dustyEnvironment', 'poorVentilation', 'powerSupplyFluctuating', 'powerFailure', 'acNotWorking', 'dimLighting', 'lightingNotWorking', 'fanNotWorking', 'junctionBoxExtraAvailable', 'junctionBoxDamaged'],
+  safety: ['fireEquipmentNotAvailable', 'exitBlocked', 'looseWires', 'damagedSwitches'],
+  general_support: []
+};
+
+const buildAssignments = (technicians, technicianTypes, existingAssignments = []) =>
+  technicianTypes.map((type) => {
+    const existing = existingAssignments.find((assignment) => assignment.technicianType === type);
+    const technician = technicians.find((user) => String(user.technicianType || '').toLowerCase().trim() === type);
+
+    return {
+      technicianType: type,
+      technicianId: technician?._id || existing?.technicianId || null,
+      status: existing?.status || 'assigned',
+      notes: existing?.notes || '',
+      timestamps: {
+        assigned: existing?.timestamps?.assigned || new Date(),
+        completed: existing?.timestamps?.completed
+      }
+    };
+  });
+
+const buildTechnicianLookupQuery = (technicianTypes) => ({
+  role: 'technician',
+  $or: technicianTypes.flatMap((type) => {
+    const escapedType = String(type).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const username = TECHNICIAN_TYPE_USERNAME_MAP[type];
+    return [
+      { technicianType: { $regex: `^${escapedType}$`, $options: 'i' } },
+      ...(username ? [{ username }] : [])
+    ];
+  })
+});
+
+const deriveTechnicianTypesFromIssue = (issueLike) => {
+  const issueCodes = new Set((issueLike?.issues || []).map((code) => String(code).trim()));
+  const derivedTypes = [];
+
+  Object.entries(TECHNICIAN_ISSUE_CODES).forEach(([techType, codes]) => {
+    if (techType === 'general_support') {
+      return;
+    }
+
+    if (codes.some((code) => issueCodes.has(code))) {
+      derivedTypes.push(techType);
+    }
+  });
+
+  if ((issueLike?.otherSuggestions || issueLike?.data?.otherSuggestions || '').trim()) {
+    derivedTypes.push('general_support');
+  }
+
+  return [...new Set(derivedTypes)];
+};
+
+const resolveAssignmentTypes = (issueLike, requestedTypes = [], requestedType) => {
+  const selectedTypes = normalizeTechnicianTypes(requestedTypes, requestedType);
+  const derivedTypes = deriveTechnicianTypesFromIssue(issueLike);
+  return [...new Set([...selectedTypes, ...derivedTypes])];
+};
+
+const deriveOverallStatus = (assignments = []) => {
+  if (assignments.length === 0) return 'submitted';
+  if (assignments.every((assignment) => assignment.status === 'completed')) return 'completed';
+  if (assignments.some((assignment) => assignment.status === 'in_progress' || assignment.status === 'completed')) return 'in_progress';
+  return 'assigned';
+};
+
 exports.createIssue = async (req, res) => {
   try {
     if (process.env.DEBUG_ISSUE === 'true') {
@@ -50,7 +135,9 @@ exports.getAllIssues = async (req, res) => {
         filter = {
           $or: [
             { assignedTechnician: userId },
-            { technicianType: { $regex: `^${techType}$`, $options: 'i' } }
+            { assignedTechnicians: userId },
+            { technicianType: { $regex: `^${techType}$`, $options: 'i' } },
+            { technicianTypes: { $elemMatch: { $regex: `^${techType}$`, $options: 'i' } } }
           ]
         };
         console.log(`   technician: techType=${techType}, filter set for both assigned and type-matching`);
@@ -67,7 +154,9 @@ exports.getAllIssues = async (req, res) => {
 
     const issues = await Issue.find(filter)
       .populate('submittedBy', 'username fullName')
-      .populate('assignedTechnician', 'username fullName technicianType');
+      .populate('assignedTechnician', 'username fullName technicianType')
+      .populate('assignedTechnicians', 'username fullName technicianType')
+      .populate('technicianAssignments.technicianId', 'username fullName technicianType');
     
     console.log(`   ✅ found ${issues.length} issues matching filter`);
     
@@ -148,54 +237,51 @@ exports.getAllIssues = async (req, res) => {
 
 exports.assignIssue = async (req, res) => {
   try {
-    const { technicianType } = req.body;
+    const issueForDerive = await Issue.findById(req.params.id).select('issues otherSuggestions data technicianAssignments');
+    const technicianTypes = resolveAssignmentTypes(
+      issueForDerive || req.body,
+      req.body.technicianTypes,
+      req.body.technicianType
+    );
 
-    if (!technicianType) {
-      return res.status(400).json({ message: 'technicianType is required' });
+    if (technicianTypes.length === 0) {
+      return res.status(400).json({ message: 'At least one technician type is required' });
     }
+    console.log(`\n📤 assignIssue: finding technicians for types="${technicianTypes.join(', ')}"`);
 
-    const techTypeNormalized = technicianType.toLowerCase().trim();
-    console.log(`\n📤 assignIssue: finding technician with type="${techTypeNormalized}"`);
+    const technicians = await User.find(buildTechnicianLookupQuery(technicianTypes));
 
-    // Find technician by type (case-insensitive, trim whitespace)
-    const technician = await User.findOne({
-      role: 'technician',
-      technicianType: { $regex: `^${techTypeNormalized}$`, $options: 'i' }
-    });
-
-    if (!technician) {
-      console.log(`   ❌ No technician found with type: ${techTypeNormalized}`);
-      
-      // Debug: Show all technicians and their types
+    if (technicians.length === 0) {
       const allTechs = await User.find({ role: 'technician' }).select('username technicianType');
-      console.log(`   Available technicians:`, allTechs.map(t => ({ username: t.username, type: t.technicianType })));
-      
-      return res.status(404).json({ 
-        message: `Technician not found for type "${techTypeNormalized}"`,
+      return res.status(404).json({
+        message: `Technician not found for types "${technicianTypes.join(', ')}"`,
         availableTypes: allTechs.map(t => t.technicianType)
       });
     }
 
-    console.log(`   ✅ Found technician: ${technician.username} (type: ${technician.technicianType})`);
-
     const issue = await Issue.findByIdAndUpdate(
       req.params.id,
       {
-        assignedTechnician: technician._id,
-        technicianType: techTypeNormalized, // ✅ Store in lowercase
+        assignedTechnician: technicians[0]?._id || null,
+        assignedTechnicians: technicians.map((technician) => technician._id),
+        technicianType: technicianTypes[0],
+        technicianTypes,
+        technicianAssignments: buildAssignments(technicians, technicianTypes),
         status: 'assigned',
         'timestamps.assigned': new Date()
       },
       { new: true }
     )
       .populate('submittedBy', 'username fullName')
-      .populate('assignedTechnician', 'username fullName technicianType');
+      .populate('assignedTechnician', 'username fullName technicianType')
+      .populate('assignedTechnicians', 'username fullName technicianType')
+      .populate('technicianAssignments.technicianId', 'username fullName technicianType');
 
     if (!issue) {
       return res.status(404).json({ message: 'Issue not found' });
     }
 
-    console.log(`   ✅ Issue assigned: ${issue._id} -> ${technician.username} (type: ${issue.technicianType})`);
+    console.log(`   ✅ Issue assigned: ${issue._id} -> ${technicianTypes.join(', ')}`);
     res.json(issue);
   } catch (error) {
     console.error('❌ Assign issue error:', error);
@@ -246,31 +332,40 @@ exports.completeIssue = async (req, res) => {
 exports.updateIssueStatus = async (req, res) => {
   try {
     const { status, technicianType, risk, analysisNotes } = req.body;
+    const issueForDerive = await Issue.findById(req.params.id).select('issues otherSuggestions data technicianAssignments');
+    const technicianTypes = resolveAssignmentTypes(
+      issueForDerive || req.body,
+      req.body.technicianTypes,
+      technicianType
+    );
 
     console.log(`\n📝 updateIssueStatus for issue: ${req.params.id}`);
-    console.log(`   technicianType: ${technicianType}, status: ${status}`);
+    console.log(`   technicianTypes: ${technicianTypes.join(', ') || '(none)'}, status: ${status}`);
 
     const update = {};
     if (status) update.status = status;
-    if (technicianType) update.technicianType = technicianType.toLowerCase(); // ✅ Store in lowercase
+    if (technicianTypes.length > 0) {
+      update.technicianType = technicianTypes[0];
+      update.technicianTypes = technicianTypes;
+    }
     if (risk) update.risk = risk;
     if (analysisNotes) update.analysisNotes = analysisNotes;
 
-    // If assigning, find a technician of that type and set assignedTechnician
-    if (status === 'assigned' && technicianType) {
-      const techType = technicianType.toLowerCase();
-      console.log(`   finding technician with type: ${techType}`);
-      
-      const technician = await User.findOne({ 
-        role: 'technician', 
-        technicianType: { $regex: `^${techType}$`, $options: 'i' }
-      });
-      
-      if (technician) {
-        console.log(`   ✅ found technician: ${technician.username} (${technician._id})`);
-        update.assignedTechnician = technician._id;
+    if (status === 'assigned' && technicianTypes.length > 0) {
+      const technicians = await User.find(buildTechnicianLookupQuery(technicianTypes));
+
+      if (technicians.length > 0) {
+        update.assignedTechnician = technicians[0]?._id || null;
+        update.assignedTechnicians = technicians.map((technician) => technician._id);
+        const existingIssue = await Issue.findById(req.params.id).select('technicianAssignments');
+        update.technicianAssignments = buildAssignments(
+          technicians,
+          technicianTypes,
+          existingIssue?.technicianAssignments || []
+        );
+        update.status = deriveOverallStatus(update.technicianAssignments);
       } else {
-        console.log(`   ❌ no technician found with type: ${techType}`);
+        console.log(`   ❌ no technicians found with types: ${technicianTypes.join(', ')}`);
       }
       update['timestamps.assigned'] = new Date();
     }
@@ -285,13 +380,15 @@ exports.updateIssueStatus = async (req, res) => {
       { new: true }
     )
       .populate('submittedBy', 'username fullName')
-      .populate('assignedTechnician', 'username fullName technicianType');
+      .populate('assignedTechnician', 'username fullName technicianType')
+      .populate('assignedTechnicians', 'username fullName technicianType')
+      .populate('technicianAssignments.technicianId', 'username fullName technicianType');
 
     if (!issue) {
       return res.status(404).json({ message: 'Issue not found' });
     }
 
-    console.log(`   ✅ issue updated: technicianType=${issue.technicianType}, status=${issue.status}, assignedTechnician=${issue.assignedTechnician?.username}`);
+    console.log(`   ✅ issue updated: technicianTypes=${issue.technicianTypes?.join(', ') || issue.technicianType}, status=${issue.status}`);
 
     // Add history entry
     issue.history = issue.history || [];
@@ -300,7 +397,7 @@ exports.updateIssueStatus = async (req, res) => {
       by: req.user?.id,
       role: req.user?.role,
       timestamp: new Date(),
-      details: { status, technicianType, risk, analysisNotes }
+      details: { status, technicianTypes, risk, analysisNotes }
     });
 
     await issue.save();

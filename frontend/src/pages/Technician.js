@@ -147,6 +147,13 @@ function Technician({ userName, onLogout }) {
     };
   };
 
+  const getTaskLocation = (task) => ({
+    block: task?.location?.block || task?.data?.block || task?.block || '',
+    floor: task?.location?.floor || task?.data?.floor || task?.floor || '',
+    roomNumber: task?.location?.roomNumber || task?.data?.roomNumber || task?.roomNumber || '',
+    category: task?.location?.category || task?.data?.locationCategory || task?.locationCategory || ''
+  });
+
   // const getPriorityColor = (priority) => {
   //   switch (priority) {
   //     case 'high':
@@ -260,13 +267,14 @@ function Technician({ userName, onLogout }) {
             ) : (
               filteredTasks.map(task => {
                 const warning = getTaskWarningDetails(task);
+                const taskLocation = getTaskLocation(task);
                 return (
                 <div key={task._id || task.id} className={`task-card ${warning.isDelayed ? 'task-card-delayed' : ''}`}>
                   <div className="task-header">
                     <h3>
-                      <span className="location-type">{task.userType || task.locationCategory}</span>
+                      <span className="location-type">{taskLocation.category || task.userType || 'Location'}</span>
                       <span className="room-info">
-                        Block {task.block} • Floor {task.floor} • Room {task.roomNumber}
+                        Block {taskLocation.block || 'N/A'} • Floor {taskLocation.floor || 'N/A'} • Room {taskLocation.roomNumber || 'N/A'}
                       </span>
                     </h3>
                     <span
@@ -282,6 +290,16 @@ function Technician({ userName, onLogout }) {
                     <p className="issue-description">
                       <strong>Issue:</strong> {task.condition || 'See details'}
                     </p>
+                    {task.relevantSpecificIssues?.length > 0 && (
+                      <p className="issue-analysis">
+                        <strong>Assigned Issues:</strong> {task.relevantSpecificIssues.join(', ')}
+                      </p>
+                    )}
+                    {task.relevantOtherSuggestions && (
+                      <p className="update-notes">
+                        <strong>Additional Issue:</strong> {task.relevantOtherSuggestions}
+                      </p>
+                    )}
                     <p className="issue-analysis">
                       <strong>Problem Level:</strong> {task.problemLevel || task.data?.problemLevel || 'Unknown'}
                     </p>
@@ -390,10 +408,10 @@ function Technician({ userName, onLogout }) {
                 {/* Location Details */}
                 <div className="detail-section">
                   <h4>Location Details</h4>
-                  <p><strong>Block:</strong> {selectedTask.block}</p>
-                  <p><strong>Floor:</strong> {selectedTask.floor}</p>
-                  <p><strong>Room Number:</strong> {selectedTask.roomNumber}</p>
-                  <p><strong>Location Type:</strong> {selectedTask.locationCategory}</p>
+                  <p><strong>Block:</strong> {getTaskLocation(selectedTask).block || 'N/A'}</p>
+                  <p><strong>Floor:</strong> {getTaskLocation(selectedTask).floor || 'N/A'}</p>
+                  <p><strong>Room Number:</strong> {getTaskLocation(selectedTask).roomNumber || 'N/A'}</p>
+                  <p><strong>Location Type:</strong> {getTaskLocation(selectedTask).category || 'N/A'}</p>
                 </div>
 
                 {/* Issue Details - Overall Condition and Issue */}
@@ -402,7 +420,19 @@ function Technician({ userName, onLogout }) {
                   <p><strong>Overall Condition:</strong> {selectedTask.condition || 'Not assessed'}</p>
                   {/* Display specific problems from the issue data */}
                   <p><strong>Specific Issues Found:</strong></p>
-                  {selectedTask.data ? (
+                  {selectedTask.relevantSpecificIssues?.length > 0 ? (
+                    <div style={{ marginLeft: '20px' }}>
+                      {selectedTask.relevantSpecificIssues.map((problem, i) => (
+                        <p key={i} style={{ margin: '5px 0', color: '#e74c3c' }}>{problem}</p>
+                      ))}
+                      {selectedTask.relevantOtherSuggestions && (
+                        <>
+                          <p style={{ margin: '8px 0 3px 0', color: '#2c3e50', fontWeight: '500' }}>Additional Issue:</p>
+                          <p style={{ margin: '3px 0', color: '#555', fontStyle: 'italic' }}>{selectedTask.relevantOtherSuggestions}</p>
+                        </>
+                      )}
+                    </div>
+                  ) : selectedTask.data ? (
                     <div style={{ marginLeft: '20px' }}>
                       {(() => {
                         const problems = [];
@@ -470,6 +500,14 @@ function Technician({ userName, onLogout }) {
                   )}
                   <p style={{ marginTop: '0.75rem', color: '#2c3e50' }}><strong>Priority:</strong> <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>P{selectedTask.priority}</span></p>
                 </div>
+
+                {(selectedTask.risk || selectedTask.analysisNotes) && (
+                  <div className="detail-section">
+                    <h4>Manager Analysis</h4>
+                    <p><strong>Risk Level:</strong> {selectedTask.risk || 'N/A'}</p>
+                    <p><strong>Analysis Notes:</strong> {selectedTask.analysisNotes || 'N/A'}</p>
+                  </div>
+                )}
 
                 <div className="detail-section">
                   <h4>Timeline</h4>
