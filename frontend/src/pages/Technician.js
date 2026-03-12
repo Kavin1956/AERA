@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import '../styles/Technician.css';
 import Navbar from '../components/Navbar';
-// import { issueAPI } from '../services/api';
-import { technicianAPI } from '../services/api';
+import { issueAPI, technicianAPI } from '../services/api';
 
 const WARNING_THRESHOLD_HOURS = 5;
 const LOCATION_TYPE_LABELS = {
@@ -110,9 +109,13 @@ const mergeNotifications = (tasks = [], fetchedNotifications = []) => {
   });
 };
 
+const getNotificationTask = (tasks = [], notification = {}) =>
+  tasks.find((task) => String(task._id || task.id) === String(notification.issueId));
+
 function Technician({ userName, onLogout }) {
   // Fallback to sessionStorage if userName prop is not available
   const displayName = userName || sessionStorage.getItem('userName');
+  const notificationMenuRef = useRef(null);
   const [tasks, setTasks] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -123,6 +126,7 @@ function Technician({ userName, onLogout }) {
   const [updateNotes, setUpdateNotes] = useState('');
   const [updateProgress, setUpdateProgress] = useState('in_progress');
   const [filterStatus, setFilterStatus] = useState('assigned');
+  const [showNotificationMenu, setShowNotificationMenu] = useState(false);
 
   // Fetch assigned tasks from backend and auto-refresh every 5 seconds (reduced from 3 for performance)
   useEffect(() => {
@@ -172,6 +176,28 @@ function Technician({ userName, onLogout }) {
     };
   }, [tasks.length]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationMenuRef.current && !notificationMenuRef.current.contains(event.target)) {
+        setShowNotificationMenu(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setShowNotificationMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, []);
+
   const handleUpdateTask = async (taskId) => {
     if (!updateNotes.trim()) {
       alert('Please enter update notes');
@@ -197,11 +223,24 @@ function Technician({ userName, onLogout }) {
       //   technicianNotes: updateNotes
       // });
 
-      await technicianAPI.updateTaskStatus(
-        taskId,
-        updateProgress,
-        updateNotes
-      );
+      try {
+        await technicianAPI.updateTaskStatus(
+          taskId,
+          updateProgress,
+          updateNotes
+        );
+      } catch (updateError) {
+        const statusCode = updateError?.response?.status;
+        if (statusCode !== 404 || updateProgress !== 'completed') {
+          throw updateError;
+        }
+
+        await issueAPI.completeIssue(taskId, {
+          status: 'completed',
+          updateNotes,
+          technicianNotes: updateNotes
+        });
+      }
 
 
       alert('Task updated successfully!');
@@ -310,8 +349,70 @@ function Technician({ userName, onLogout }) {
 
       <div className="technician-main">
         <div className="technician-header">
-          <h2>Technician Dashboard</h2>
-          <p>View assigned tasks and update their status</p>
+          <div className="technician-header-top">
+            <div>
+              <h2>Technician Dashboard</h2>
+              <p>View assigned tasks and update their status</p>
+            </div>
+            <div className="technician-notification-anchor" ref={notificationMenuRef}>
+              <button
+                type="button"
+                className={`technician-bell-btn ${showNotificationMenu ? 'active' : ''}`}
+                onClick={() => setShowNotificationMenu((current) => !current)}
+                aria-label="Open notifications"
+                aria-expanded={showNotificationMenu}
+              >
+                <span className="technician-bell-icon" aria-hidden="true">🔔</span>
+                {notifications.length > 0 && (
+                  <span className="technician-bell-count">{notifications.length}</span>
+                )}
+              </button>
+              {showNotificationMenu && (
+                <div className="technician-notification-dropdown">
+                  <div className="technician-notifications-header">
+                    <h3>Manager Notifications</h3>
+                    <span>{notifications.length}</span>
+                  </div>
+                  {notifications.length === 0 ? (
+                    <p className="technician-notification-empty">No notifications right now.</p>
+                  ) : (
+                    <div className="technician-notifications-list">
+                      {notifications.slice(0, 5).map((notification) => (
+                        <div key={notification._id} className="technician-notification-card">
+                          <p className="technician-notification-message">{notification.message}</p>
+                          <div className="technician-notification-footer">
+                            <p className="technician-notification-time">
+                              {notification.createdAt ? new Date(notification.createdAt).toLocaleString() : 'Just now'}
+                            </p>
+                            {getNotificationTask(tasks, notification) && (
+                              <button
+                                type="button"
+                                className="technician-notification-view-btn"
+                                onClick={() => {
+                                  const matchedTask = getNotificationTask(tasks, notification);
+                                  if (!matchedTask) {
+                                    return;
+                                  }
+
+                                  setSelectedTask(matchedTask);
+                                  setShowDetails(true);
+                                  setUpdateNotes('');
+                                  setUpdateProgress(matchedTask.status || 'in_progress');
+                                  setShowNotificationMenu(false);
+                                }}
+                              >
+                                View Details
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="technician-content">
@@ -319,24 +420,6 @@ function Technician({ userName, onLogout }) {
           {delayedTasks.length > 0 && (
             <div className="technician-warning-alert">
               <strong>⚠ Warning:</strong> {delayedTasks.length} task{delayedTasks.length > 1 ? 's are' : ' is'} delayed for more than {WARNING_THRESHOLD_HOURS} hours.
-            </div>
-          )}
-          {notifications.length > 0 && (
-            <div className="technician-notifications-panel">
-              <div className="technician-notifications-header">
-                <h3>Manager Notifications</h3>
-                <span>{notifications.length}</span>
-              </div>
-              <div className="technician-notifications-list">
-                {notifications.slice(0, 5).map((notification) => (
-                  <div key={notification._id} className="technician-notification-card">
-                    <p className="technician-notification-message">{notification.message}</p>
-                    <p className="technician-notification-time">
-                      {notification.createdAt ? new Date(notification.createdAt).toLocaleString() : 'Just now'}
-                    </p>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
           <div className="dashboard-stats">

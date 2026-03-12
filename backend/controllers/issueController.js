@@ -338,20 +338,12 @@ exports.assignIssue = async (req, res) => {
 exports.completeIssue = async (req, res) => {
   try {
     if (process.env.DEBUG_ISSUE === 'true') {
-      console.debug('\n✅ Complete Issue Request:');
+      console.debug('\\nComplete Issue Request:');
       console.debug('Issue ID:', req.params.id);
       console.debug('User Role:', req.user?.role);
     }
 
-    const issue = await Issue.findByIdAndUpdate(
-      req.params.id,
-      {
-        status: 'completed',
-        'timestamps.completed': new Date()
-      },
-      { new: true }
-    ).populate('submittedBy', 'username fullName email')
-     .populate('assignedTechnician', 'username fullName technicianType');
+    const issue = await Issue.findById(req.params.id);
 
     if (!issue) {
       return res.status(404).json({ 
@@ -360,10 +352,68 @@ exports.completeIssue = async (req, res) => {
       });
     }
 
-    console.info('✅ Issue completed:', issue._id);
-    res.json(issue);
+    const userId = req.user?.id;
+    const technicianType = String(req.user?.technicianType || '').toLowerCase().trim();
+    const updateNotes = req.body?.updateNotes || req.body?.technicianNotes || req.body?.notes || '';
+
+    if (req.user?.role === 'technician') {
+      let assignmentUpdated = false;
+
+      issue.technicianAssignments = (issue.technicianAssignments || []).map((assignment) => {
+        const assignmentTechId = assignment.technicianId?._id || assignment.technicianId;
+        const matchesId = assignmentTechId && String(assignmentTechId) === String(userId);
+        const matchesType = technicianType && assignment.technicianType === technicianType;
+
+        if (!matchesId && !matchesType) {
+          return assignment;
+        }
+
+        assignmentUpdated = true;
+        assignment.status = 'completed';
+        assignment.notes = updateNotes;
+        assignment.timestamps = assignment.timestamps || {};
+        assignment.timestamps.assigned = assignment.timestamps.assigned || issue.timestamps?.assigned || new Date();
+        assignment.timestamps.completed = new Date();
+        return assignment;
+      });
+
+      if (!assignmentUpdated) {
+        issue.technicianAssignments = [
+          ...(issue.technicianAssignments || []),
+          {
+            technicianType: technicianType || String(issue.technicianType || '').toLowerCase().trim() || 'general_support',
+            technicianId: userId,
+            status: 'completed',
+            notes: updateNotes,
+            timestamps: {
+              assigned: issue.timestamps?.assigned || new Date(),
+              completed: new Date()
+            }
+          }
+        ];
+      }
+
+      issue.technicianNotes = (issue.technicianAssignments || [])
+        .filter((assignment) => assignment.notes)
+        .map((assignment) => `${assignment.technicianType}: ${assignment.notes}`)
+        .join(' | ');
+    }
+
+    issue.status = 'completed';
+    issue.timestamps = issue.timestamps || {};
+    issue.timestamps.completed = new Date();
+    await issue.save();
+
+    const populatedIssue = await Issue.findById(req.params.id)
+      .populate('submittedBy', 'username fullName email')
+      .populate('assignedTechnician', 'username fullName technicianType')
+      .populate('assignedTechnicians', 'username fullName technicianType')
+      .populate('technicianAssignments.technicianId', 'username fullName technicianType');
+
+    console.info('Issue completed:', issue._id);
+    res.json(populatedIssue);
   } catch (error) {
-    console.error('❌ Complete issue error:', error);
+    console.error('Complete issue error:', error);
     res.status(500).json({ 
       message: 'Error completing issue',
       error: error.message,
@@ -573,3 +623,4 @@ exports.sendWarningAlert = async (req, res) => {
     });
   }
 };
+

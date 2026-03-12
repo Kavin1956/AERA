@@ -248,7 +248,41 @@ exports.updateTaskStatus = async (req, res) => {
     });
 
     if (!assignmentUpdated) {
-      return res.status(404).json({ message: 'No technician assignment found for this task' });
+      const directlyAssigned =
+        (issue.assignedTechnician && String(issue.assignedTechnician) === String(userId)) ||
+        (issue.assignedTechnicians || []).some((technicianId) => String(technicianId) === String(userId));
+      const issueTechnicianTypes = (issue.technicianTypes || [])
+        .map((type) => String(type).toLowerCase().trim())
+        .filter(Boolean);
+      const typeAssigned =
+        (technicianType && String(issue.technicianType || '').toLowerCase().trim() === technicianType) ||
+        (technicianType && issueTechnicianTypes.includes(technicianType));
+
+      if (!directlyAssigned && !typeAssigned) {
+        return res.status(404).json({ message: 'No technician assignment found for this task' });
+      }
+
+      const assignmentType =
+        technicianType ||
+        String(issue.technicianType || '').toLowerCase().trim() ||
+        issueTechnicianTypes[0] ||
+        'general_support';
+
+      issue.technicianAssignments = [
+        ...(issue.technicianAssignments || []),
+        {
+          technicianType: assignmentType,
+          technicianId: userId,
+          status,
+          notes: typeof updateNotes !== 'undefined' ? updateNotes : '',
+          timestamps: {
+            assigned: issue.timestamps?.assigned || new Date(),
+            completed: status === 'completed' ? new Date() : undefined
+          }
+        }
+      ];
+
+      assignmentUpdated = true;
     }
 
     const assignments = issue.technicianAssignments || [];
