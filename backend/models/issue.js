@@ -84,6 +84,12 @@ const issueSchema = new mongoose.Schema({
   issues: [String], // Array of issue codes (e.g., ["slowInternet", "projectorNotWorking"])
   otherSuggestions: String,
   technicianNotes: String, // Notes/updates from technician
+  warningAlert: {
+    type: Boolean,
+    default: false
+  },
+  warningMessage: String,
+  lastWarningAlert: Date,
 
   status: {
     type: String,

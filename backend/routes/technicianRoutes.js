@@ -4,6 +4,7 @@ const router = express.Router();
 const auth = require('../middleware/authMiddleware');
 const role = require('../middleware/roleMiddleware');
 const technicianController = require('../controllers/technicianController');
+const notificationController = require('../controllers/notificationController');
 
 // Get tasks assigned to logged-in technician
 router.get(
@@ -19,6 +20,13 @@ router.put(
   auth,
   role('technician'),
   technicianController.updateTaskStatus
+);
+
+router.get(
+  '/notifications',
+  auth,
+  role('technician'),
+  notificationController.getTechnicianNotifications
 );
 
 module.exports = router;

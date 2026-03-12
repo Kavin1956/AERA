@@ -69,6 +69,14 @@ const getReporterDetails = (issue = {}) => ({
   name: issue.reporterName || issue.reporter?.name || issue.submittedBy?.fullName || issue.submittedBy?.username || 'Unknown',
   email: issue.reporterEmail || issue.reporter?.email || issue.submittedBy?.email || 'Not provided'
 });
+
+const sortIssuesBySubmitted = (issueList = []) => (
+  [...issueList].sort((a, b) => {
+    const aTime = a?.timestamps?.submitted ? new Date(a.timestamps.submitted).getTime() : 0;
+    const bTime = b?.timestamps?.submitted ? new Date(b.timestamps.submitted).getTime() : 0;
+    return aTime - bTime;
+  })
+);
 const WARNING_COPY = {
   notSolved: '⚠ Issue not solved yet. Please take action.',
   noResponse: '⚠ No response from technician.'
@@ -102,6 +110,12 @@ function Manager({ userName, onLogout }) {
   const [activeTab, setActiveTab] = useState('current');
   const [analyticsData, setAnalyticsData] = useState({});
   const [previousIssueCount, setPreviousIssueCount] = useState(0); // Track previous count to detect new issues
+  const sortedIssuesBySubmission = sortIssuesBySubmitted(issues);
+  const issueDisplayIdMap = sortedIssuesBySubmission.reduce((acc, issue, index) => {
+    acc[issue._id] = `IS${index + 1}`;
+    return acc;
+  }, {});
+  const getIssueDisplayId = (issue) => issueDisplayIdMap[issue?._id] || 'IS-';
 
   // Fetch issues from backend on mount and auto-refresh every 5 seconds
   useEffect(() => {
@@ -279,42 +293,6 @@ function Manager({ userName, onLogout }) {
     const now = new Date();
     const minutesAgo = (now - submittedTime) / (1000 * 60);
     return minutesAgo < 2; // Highlight as "new" if submitted within 2 minutes
-  };
-
-  // Format location object into human-readable string
-  const formatLocation = (loc, data) => {
-    if (!loc) return '';
-    const parts = [];
-    const locationDetails = getLocationDetails(loc, data);
-    if (loc.block) {
-      // capitalize block string (first letter only)
-      const b = loc.block.toLowerCase();
-      parts.push(b.charAt(0).toUpperCase() + b.slice(1));
-    }
-    if (loc.floor) {
-      const ordinals = {
-        1: 'first',
-        2: 'second',
-        3: 'third',
-        4: 'fourth',
-        5: 'fifth',
-        6: 'sixth',
-        7: 'seventh',
-        8: 'eighth',
-        9: 'ninth',
-        10: 'tenth'
-      };
-      const floorWordRaw = ordinals[loc.floor] || `${loc.floor}`;
-      // floor text all lowercase
-      parts.push(`${floorWordRaw} floor`);
-    }
-    if (locationDetails.detailValue) {
-      parts.push(`${locationDetails.detailLabel} ${locationDetails.detailValue}`);
-    }
-    if (locationDetails.categoryLabel) {
-      parts.push(locationDetails.categoryLabel);
-    }
-    return parts.filter(Boolean).join(', ');
   };
 
   const formatLocationForTable = (loc, data) => {
@@ -510,7 +488,8 @@ function Manager({ userName, onLogout }) {
       setIssues(issues.map(i =>
         i._id === issueId ? { 
           ...i, 
-          warningAlert: false, // Reset flag after sending
+          warningAlert: true,
+          warningMessage: warningMessage || 'Warning: This issue requires your immediate attention.',
           lastWarningAlert: new Date()
         } : i
       ));
@@ -519,7 +498,8 @@ function Manager({ userName, onLogout }) {
       if (selectedIssue && selectedIssue._id === issueId) {
         setSelectedIssue(prev => ({
           ...prev,
-          warningAlert: false,
+          warningAlert: true,
+          warningMessage: warningMessage || 'Warning: This issue requires your immediate attention.',
           lastWarningAlert: new Date()
         }));
       }
@@ -554,14 +534,14 @@ function Manager({ userName, onLogout }) {
       filtered = filtered.filter(issue => issue.status === 'submitted');
     }
     
-    return filtered;
+    return sortIssuesBySubmitted(filtered);
   };
 
   const getCompletedIssues = () => {
-    return issues.filter(i => i.status === 'completed');
+    return sortIssuesBySubmitted(issues.filter(i => i.status === 'completed'));
   };
 
-  const delayedIssues = issues.filter((issue) => getIssueWarningDetails(issue).isDelayed);
+  const delayedIssues = sortIssuesBySubmitted(issues.filter((issue) => getIssueWarningDetails(issue).isDelayed));
   const currentTabIssues = activeTab === 'current' ? getFilteredIssues() : null;
   const completedTabIssues = activeTab === 'history' ? getCompletedIssues() : null;
 
@@ -663,11 +643,18 @@ function Manager({ userName, onLogout }) {
                   <div className="delayed-issues-list">
                     {delayedIssues.map((issue) => {
                       const warning = getIssueWarningDetails(issue);
+                      const issueDisplayId = getIssueDisplayId(issue);
+                      const issueSummary = issue.specificIssues?.[0] || issue.condition || 'Issue details unavailable';
                       return (
-                        <div key={issue._id} className="delayed-issue-card">
+                        <button
+                          key={issue._id}
+                          type="button"
+                          className="delayed-issue-card"
+                          onClick={() => openIssueDetails(issue, issueDisplayId)}
+                        >
                           <div>
-                            <strong>{formatLocation(issue.location, issue.data) || 'Issue location unavailable'}</strong>
-                            <p>{getLocationDetails(issue.location, issue.data).categoryLabel || 'Uncategorized issue'}</p>
+                            <strong>Issue ID: {issueDisplayId}</strong>
+                            <p>{issueSummary}</p>
                           </div>
                           <div>
                             <span className={`warning-note ${warning.status}`}>
@@ -677,7 +664,7 @@ function Manager({ userName, onLogout }) {
                               Open for {Math.floor(warning.hoursOpen)} hour{Math.floor(warning.hoursOpen) === 1 ? '' : 's'}
                             </p>
                           </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -731,11 +718,11 @@ function Manager({ userName, onLogout }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {currentTabIssues?.map((issue, index) => {
+                      {currentTabIssues?.map((issue) => {
                         const warning = getIssueWarningDetails(issue);
                         return (
                         <tr key={issue._id} className={`issue-row status-${issue.status} ${warning.isDelayed ? 'warning-delayed-row' : ''} ${isNewIssue(issue) ? 'new-issue-highlight' : ''}`}>
-                          <td>IS{index + 1}</td>
+                          <td>{getIssueDisplayId(issue)}</td>
                           <td>{formatLocationForTable(issue.location, issue.data) || '-'}</td>
                           <td>{issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector'}</td>
                           <td>{getLocationDetails(issue.location, issue.data).categoryLabel || 'N/A'}</td>
@@ -765,7 +752,7 @@ function Manager({ userName, onLogout }) {
                               className="view-btn"
                               onClick={() => {
                                 console.log('🔍 SELECTED ISSUE DATA:', JSON.stringify(issue, null, 2));
-                                openIssueDetails(issue, `IS${index + 1}`);
+                                openIssueDetails(issue, getIssueDisplayId(issue));
                               }}
                             >
                               View
@@ -804,9 +791,9 @@ function Manager({ userName, onLogout }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {completedTabIssues?.map((issue, index) => (
+                    {completedTabIssues?.map((issue) => (
                       <tr key={issue._id} className="issue-row status-completed">
-                        <td>IS{index + 1}</td>
+                        <td>{getIssueDisplayId(issue)}</td>
                         <td>
                           {formatLocationForTable(issue.location, issue.data) || '-'}
                         </td>
@@ -826,7 +813,7 @@ function Manager({ userName, onLogout }) {
                           <button
                             className="view-btn"
                             onClick={() => {
-                              openIssueDetails(issue, `IS${index + 1}`);
+                              openIssueDetails(issue, getIssueDisplayId(issue));
                             }}
                           >
                             View

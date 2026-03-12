@@ -233,10 +233,27 @@
   justify-content: space-between;
   gap: 1rem;
   align-items: center;
+  width: 100%;
   background: #fff;
   border: 1px solid #ffe2a8;
   border-radius: 10px;
   padding: 0.9rem 1rem;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.delayed-issue-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  border-color: #f6c768;
+}
+
+.delayed-issue-card:focus-visible {
+  outline: 3px solid rgba(245, 158, 11, 0.25);
+  outline-offset: 2px;
 }
 
 .delayed-issue-card p {

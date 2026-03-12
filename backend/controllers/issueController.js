@@ -86,6 +86,26 @@ const deriveOverallStatus = (assignments = []) => {
   return 'assigned';
 };
 
+const resolveWarningRecipients = async (issue) => {
+  const directTechnicianIds = [
+    ...(issue.assignedTechnicians || []),
+    issue.assignedTechnician,
+    ...((issue.technicianAssignments || []).map((assignment) => assignment?.technicianId))
+  ]
+    .map((technicianId) => technicianId?.toString())
+    .filter(Boolean);
+
+  const technicianTypes = normalizeTechnicianTypes(issue.technicianTypes, issue.technicianType);
+  let fallbackTechnicianIds = [];
+
+  if (technicianTypes.length > 0) {
+    const fallbackTechnicians = await User.find(buildTechnicianLookupQuery(technicianTypes)).select('_id');
+    fallbackTechnicianIds = fallbackTechnicians.map((technician) => technician._id.toString());
+  }
+
+  return [...new Set([...directTechnicianIds, ...fallbackTechnicianIds])];
+};
+
 exports.createIssue = async (req, res) => {
   try {
     if (process.env.DEBUG_ISSUE === 'true') {
@@ -488,7 +508,6 @@ exports.sendWarningAlert = async (req, res) => {
   try {
     const issueId = req.params.id;
     const userRole = req.user?.role;
-    const userId = req.user?.id;
     const { message } = req.body;
 
     console.log(`\n⚠️  Send Warning Alert Request:`);
@@ -510,9 +529,10 @@ exports.sendWarningAlert = async (req, res) => {
         details: `No issue found with ID: ${issueId}`
       });
     }
+    const uniqueTechnicianIds = await resolveWarningRecipients(issue);
 
     // Check if issue has assigned technician
-    if (!issue.assignedTechnician) {
+    if (uniqueTechnicianIds.length === 0) {
       return res.status(400).json({ 
         message: 'No technician assigned',
         details: 'Cannot send warning to an issue without an assigned technician'
@@ -521,23 +541,28 @@ exports.sendWarningAlert = async (req, res) => {
 
     // Import Notification model
     const Notification = require('../models/notification');
+    const notificationMessage = message || `Warning: Issue ${issueId} needs urgent attention. Please respond immediately.`;
 
-    // Create notification for the technician
-    const notification = await Notification.create({
-      technicianId: issue.assignedTechnician,
-      issueId: issueId,
-      message: message || `⚠️ Warning: Issue ${issueId} needs urgent attention. Please respond immediately.`
-    });
+    // Create notification for all technicians assigned to this issue
+    const notifications = await Notification.insertMany(
+      uniqueTechnicianIds.map((technicianId) => ({
+        technicianId,
+        issueId: issueId,
+        message: notificationMessage
+      }))
+    );
 
     // Update issue to mark that warning was sent
     issue.warningAlert = true;
+    issue.warningMessage = notificationMessage;
     issue.lastWarningAlert = new Date();
     await issue.save();
 
-    console.log(`✅ Warning alert sent to technician for issue ${issueId}`);
+    console.log(`Warning alert sent to technician for issue ${issueId}`);
     res.json({ 
       message: 'Warning alert sent successfully',
-      notificationId: notification._id,
+      notificationIds: notifications.map((notification) => notification._id),
+      recipients: uniqueTechnicianIds.length,
       issueId: issueId
     });
   } catch (error) {

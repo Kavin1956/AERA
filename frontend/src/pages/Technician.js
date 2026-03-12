@@ -77,10 +77,44 @@ const WARNING_COPY = {
 
 
 
+const buildManagerWarningNotifications = (tasks = []) =>
+  tasks
+    .filter((task) => task.warningAlert && task.warningMessage)
+    .map((task) => ({
+      _id: `issue-warning-${task._id}`,
+      issueId: task._id,
+      message: task.warningMessage,
+      createdAt: task.lastWarningAlert || task.updatedAt || task.timestamps?.assigned || task.timestamps?.submitted,
+      source: 'issue'
+    }));
+
+const mergeNotifications = (tasks = [], fetchedNotifications = []) => {
+  const merged = [...buildManagerWarningNotifications(tasks), ...fetchedNotifications];
+  const uniqueNotifications = [];
+  const seen = new Set();
+
+  merged.forEach((notification) => {
+    const notificationKey = `${notification.issueId || notification._id}-${notification.message}`;
+    if (seen.has(notificationKey)) {
+      return;
+    }
+
+    seen.add(notificationKey);
+    uniqueNotifications.push(notification);
+  });
+
+  return uniqueNotifications.sort((left, right) => {
+    const leftTime = left.createdAt ? new Date(left.createdAt).getTime() : 0;
+    const rightTime = right.createdAt ? new Date(right.createdAt).getTime() : 0;
+    return rightTime - leftTime;
+  });
+};
+
 function Technician({ userName, onLogout }) {
   // Fallback to sessionStorage if userName prop is not available
   const displayName = userName || sessionStorage.getItem('userName');
   const [tasks, setTasks] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -94,13 +128,24 @@ function Technician({ userName, onLogout }) {
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        const response = await technicianAPI.getAssignedTasks();
+        const [tasksResult, notificationsResult] = await Promise.allSettled([
+          technicianAPI.getAssignedTasks(),
+          technicianAPI.getNotifications()
+        ]);
+
+        if (tasksResult.status !== 'fulfilled') {
+          throw tasksResult.reason;
+        }
 
         // The backend returns only tasks relevant to this technician (either assigned or matching technicianType)
-        const assignedTasks = response.data || [];
+        const assignedTasks = tasksResult.value.data || [];
+        const activeNotifications = notificationsResult.status === 'fulfilled'
+          ? (notificationsResult.value.data || [])
+          : [];
 
-        if (process.env.REACT_APP_DEBUG === 'true') console.debug('📥 Technician tasks loaded:', assignedTasks.length);
+        if (process.env.REACT_APP_DEBUG === 'true') console.debug('???? Technician tasks loaded:', assignedTasks.length);
         setTasks(assignedTasks);
+        setNotifications(mergeNotifications(assignedTasks, activeNotifications));
         setError('');
       } catch (err) {
         console.error('❌ Fetch tasks error:', err.response?.data || err.message);
@@ -173,8 +218,19 @@ function Technician({ userName, onLogout }) {
       // setTasks(assignedTasks);
       
 
-      const response = await technicianAPI.getAssignedTasks();
-      setTasks(response.data || []);
+      const [tasksResult, notificationsResult] = await Promise.allSettled([
+        technicianAPI.getAssignedTasks(),
+        technicianAPI.getNotifications()
+      ]);
+      if (tasksResult.status === 'fulfilled') {
+        const refreshedTasks = tasksResult.value.data || [];
+        const refreshedNotifications = notificationsResult.status === 'fulfilled'
+          ? (notificationsResult.value.data || [])
+          : [];
+
+        setTasks(refreshedTasks);
+        setNotifications(mergeNotifications(refreshedTasks, refreshedNotifications));
+      }
 
 
       setUpdateNotes('');
@@ -263,6 +319,24 @@ function Technician({ userName, onLogout }) {
           {delayedTasks.length > 0 && (
             <div className="technician-warning-alert">
               <strong>⚠ Warning:</strong> {delayedTasks.length} task{delayedTasks.length > 1 ? 's are' : ' is'} delayed for more than {WARNING_THRESHOLD_HOURS} hours.
+            </div>
+          )}
+          {notifications.length > 0 && (
+            <div className="technician-notifications-panel">
+              <div className="technician-notifications-header">
+                <h3>Manager Notifications</h3>
+                <span>{notifications.length}</span>
+              </div>
+              <div className="technician-notifications-list">
+                {notifications.slice(0, 5).map((notification) => (
+                  <div key={notification._id} className="technician-notification-card">
+                    <p className="technician-notification-message">{notification.message}</p>
+                    <p className="technician-notification-time">
+                      {notification.createdAt ? new Date(notification.createdAt).toLocaleString() : 'Just now'}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
           <div className="dashboard-stats">

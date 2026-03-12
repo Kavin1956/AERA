@@ -125,6 +125,14 @@ const getDisplayStatus = (issue) => {
   return issue.status;
 };
 
+const sortIssuesByLatest = (issueList = []) => (
+  [...issueList].sort((a, b) => {
+    const aTime = a?.timestamps?.submitted ? new Date(a.timestamps.submitted).getTime() : 0;
+    const bTime = b?.timestamps?.submitted ? new Date(b.timestamps.submitted).getTime() : 0;
+    return bTime - aTime;
+  })
+);
+
 function DataCollector({ userName, onLogout }) {
   // Fallback to sessionStorage if userName prop is not available
   const displayName = userName || sessionStorage.getItem('userName');
@@ -1113,7 +1121,7 @@ function DataCollector({ userName, onLogout }) {
               </div>
             ) : (
               <div className="issues-list">
-                {issues.map((issue) => (
+                {sortIssuesByLatest(issues).map((issue) => (
                   <div key={issue._id} className="issue-card">
                     <div className="issue-header">
                       <span className="issue-type">{issue.userType}</span>

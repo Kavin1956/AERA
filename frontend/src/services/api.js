@@ -112,6 +112,8 @@ export const issueAPI = {
 export const technicianAPI = {
   getAssignedTasks: () => api.get('/technician/tasks'),
 
+  getNotifications: () => api.get('/technician/notifications'),
+
   updateTaskStatus: (taskId, status, updateNotes) =>
     api.put(`/technician/tasks/${taskId}`, {
       status,
