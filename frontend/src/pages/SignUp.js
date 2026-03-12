@@ -20,6 +20,7 @@ function SignUp() {
   password: '',
   confirmPassword: '',
   role: 'data_collector',
+  userType: '',
   technicianType: ''
 });
 
@@ -42,7 +43,7 @@ function SignUp() {
     setSuccess('');
 
     // Validation
-    if (!formData.fullName || !formData.email || !formData.username || !formData.password || !formData.confirmPassword) {
+    if (!formData.fullName || !formData.email || !formData.username || !formData.password || !formData.confirmPassword || !formData.userType) {
       setError('Please fill in all fields');
       return;
     }
@@ -65,7 +66,8 @@ function SignUp() {
         email: formData.email,
         username: formData.username,
         password: formData.password,
-        role: formData.role
+        role: formData.role,
+        userType: formData.userType
       });
 
       setSuccess('Sign-up successful! Redirecting to login...');
@@ -169,6 +171,23 @@ function SignUp() {
             <p className="info-text" style={{ fontSize: '0.85em', color: '#666', marginTop: '5px' }}>
               Only Data Collectors can sign up. Technicians and Managers are pre-configured accounts.
             </p>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="userType" className="form-label">User Type</label>
+            <select
+              id="userType"
+              name="userType"
+              className="form-input form-select"
+              value={formData.userType}
+              onChange={handleChange}
+              required
+            >
+              <option value="">Select User Type</option>
+              <option value="student">Student</option>
+              <option value="faculty">Faculty</option>
+              <option value="data_collector">Data Collector</option>
+            </select>
           </div>
 
           {error && <div className="error-message">{error}</div>}

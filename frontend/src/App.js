@@ -28,6 +28,7 @@ function App() {
       sessionStorage.removeItem('userName');
       sessionStorage.removeItem('userFullName');
       sessionStorage.removeItem('userEmail');
+      sessionStorage.removeItem('userType');
     }
   }, [isAuthenticated]);
 
@@ -58,6 +59,7 @@ function App() {
     sessionStorage.removeItem('userName');
     sessionStorage.removeItem('userFullName');
     sessionStorage.removeItem('userEmail');
+    sessionStorage.removeItem('userType');
   };
 
   return (

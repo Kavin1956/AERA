@@ -128,28 +128,32 @@ const buildDefaultUsers = async () => ([
     email: 'dc_grace@aera.edu',
     username: 'dc_grace',
     password: await hashPassword('dcpass123'),
-    role: 'data_collector'
+    role: 'data_collector',
+    userType: 'data_collector'
   },
   {
     fullName: 'Hannah Data Collector',
     email: 'dc_hannah@aera.edu',
     username: 'dc_hannah',
     password: await hashPassword('dcpass123'),
-    role: 'data_collector'
+    role: 'data_collector',
+    userType: 'student'
   },
   {
     fullName: 'Isaac Data Collector',
     email: 'dc_isaac@aera.edu',
     username: 'dc_isaac',
     password: await hashPassword('dcpass123'),
-    role: 'data_collector'
+    role: 'data_collector',
+    userType: 'faculty'
   },
   {
     fullName: 'Demo User',
     email: 'demo@aera.edu',
     username: 'demo',
     password: await hashPassword('demo123'),
-    role: 'data_collector'
+    role: 'data_collector',
+    userType: 'student'
   }
 ]);
 
@@ -167,9 +171,9 @@ exports.ensureDefaultAccounts = async () => {
 // ================= REGISTER =================
 exports.register = async (req, res) => {
   try {
-    const { fullName, email, username, password, role, technicianType } = req.body;
+    const { fullName, email, username, password, role, userType, technicianType } = req.body;
 
-    if (!fullName || !email || !username || !password || !role) {
+    if (!fullName || !email || !username || !password || !role || !userType) {
       return res.status(400).json({ message: 'Please fill in all required fields' });
     }
 
@@ -193,6 +197,7 @@ exports.register = async (req, res) => {
       username,
       password: hashedPassword,
       role,
+      userType,
       technicianType
     });
 
@@ -247,6 +252,7 @@ exports.login = async (req, res) => {
         id: user._id,
         role: user.role,
         username: user.username,
+        userType: user.userType,
         technicianType: user.technicianType,
         fullName: user.fullName,
         email: user.email
@@ -259,6 +265,7 @@ exports.login = async (req, res) => {
       token,
       role: user.role,
       username: user.username,
+      userType: user.userType,
       technicianType: user.technicianType,
       fullName: user.fullName,
       email: user.email

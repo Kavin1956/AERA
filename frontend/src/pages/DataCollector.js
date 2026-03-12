@@ -107,6 +107,48 @@ const formatAssignmentStatus = (status) => {
   }
 };
 
+const formatUserType = (userType = '') => {
+  if (userType === 'student') return 'Student';
+  if (userType === 'faculty') return 'Faculty';
+  if (userType === 'data_collector') return 'Data Collector';
+  return userType || 'Unknown';
+};
+
+const parseTokenPayload = (token) => {
+  if (!token) return null;
+
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+
+    const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const paddedPayload = normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, '=');
+    return JSON.parse(window.atob(paddedPayload));
+  } catch (error) {
+    console.warn('Unable to parse auth token payload:', error);
+    return null;
+  }
+};
+
+const resolveUserType = () => {
+  const storedUserType = sessionStorage.getItem('userType') || '';
+  if (storedUserType) return storedUserType;
+
+  const tokenPayload = parseTokenPayload(sessionStorage.getItem('token'));
+  if (tokenPayload?.userType) {
+    sessionStorage.setItem('userType', tokenPayload.userType);
+    return tokenPayload.userType;
+  }
+
+  const userRole = sessionStorage.getItem('userRole') || tokenPayload?.role || '';
+  if (userRole === 'data_collector') {
+    sessionStorage.setItem('userType', 'data_collector');
+    return 'data_collector';
+  }
+
+  return '';
+};
+
 const getDisplayStatus = (issue) => {
   const assignments = issue.technicianAssignments || [];
 
@@ -137,7 +179,6 @@ function DataCollector({ userName, onLogout }) {
   // Fallback to sessionStorage if userName prop is not available
   const displayName = userName || sessionStorage.getItem('userName');
   const [currentStep, setCurrentStep] = useState(1);
-  const [userType, setUserType] = useState('');
   const [locationCategory, setLocationCategory] = useState('');
   const [formData, setFormData] = useState({});
   const [issues, setIssues] = useState([]);
@@ -189,11 +230,6 @@ function DataCollector({ userName, onLogout }) {
     setError('');
   };
 
-  const handleUserTypeChange = (e) => {
-    setUserType(e.target.value);
-    setError('');
-  };
-
   const handleLocationChange = (e) => {
     const nextCategory = e.target.value;
 
@@ -210,15 +246,7 @@ function DataCollector({ userName, onLogout }) {
 
   const getSelectedLocationInputConfig = () => LOCATION_TYPE_FIELDS[normalizeLocationCategory(locationCategory)];
 
-  const validateStep1 = () => {
-    if (!userType) {
-      setError('Please select a user type');
-      return false;
-    }
-    return true;
-  };
-
-  const validateStep3 = () => {
+  const validateLocationStep = () => {
     const locationInputConfig = getSelectedLocationInputConfig();
     const locationInputValue = locationInputConfig ? String(formData[locationInputConfig.inputName] || '').trim() : '';
 
@@ -231,7 +259,7 @@ function DataCollector({ userName, onLogout }) {
     return true;
   };
 
-  const validateStep4 = () => {
+  const validateConditionStep = () => {
     if (!formData.condition) {
       setError('Please select a condition status');
       return false;
@@ -263,10 +291,8 @@ function DataCollector({ userName, onLogout }) {
   };
 
   const handleNextStep = () => {
-    if (currentStep === 1 && validateStep1()) {
+    if (currentStep === 1 && validateLocationStep()) {
       setCurrentStep(2);
-    } else if (currentStep === 2 && validateStep3()) {
-      setCurrentStep(3);
     }
   };
 
@@ -420,7 +446,13 @@ function DataCollector({ userName, onLogout }) {
   };
 
   const handleSubmit = async () => {
-    if (!validateStep4()) return;
+    if (!validateConditionStep()) return;
+
+    const storedUserType = resolveUserType();
+    if (!storedUserType) {
+      setError('User type is missing from your account. Please log in again.');
+      return;
+    }
 
     // Check if user is actually a data_collector or manager (both can submit)
     const userRole = sessionStorage.getItem('userRole');
@@ -443,7 +475,7 @@ function DataCollector({ userName, onLogout }) {
 
     try {
       console.log('\n📤 SUBMITTING ISSUE:');
-      console.log('User Type:', userType);
+      console.log('User Type:', storedUserType);
       console.log('Location Category:', locationCategory);
       console.log('Location Block:', formData.block);
       console.log('Location Floor:', formData.floor);
@@ -458,7 +490,7 @@ function DataCollector({ userName, onLogout }) {
         console.debug('User Role:', sessionStorage.getItem('userRole'));
         console.debug('User Name:', sessionStorage.getItem('userName'));
         console.debug('Issue Data:', {
-          userType,
+          userType: storedUserType,
           locationCategory,
           block: formData.block,
           floor: formData.floor,
@@ -474,7 +506,7 @@ function DataCollector({ userName, onLogout }) {
       }
 
       const issueData = {
-        userType,
+        userType: storedUserType,
         reporterName: sessionStorage.getItem('userFullName') || displayName || sessionStorage.getItem('userName') || '',
         reporterEmail: sessionStorage.getItem('userEmail') || '',
         location: {
@@ -535,7 +567,6 @@ function DataCollector({ userName, onLogout }) {
 
       // Reset form
       setFormData({});
-      setUserType('');
       setLocationCategory('');
       setCurrentStep(1);
       setError('');
@@ -569,60 +600,16 @@ function DataCollector({ userName, onLogout }) {
               <div className={`step ${currentStep >= 1 ? 'active' : ''}`}>1</div>
               <div className={`step-line ${currentStep >= 2 ? 'active' : ''}`}></div>
               <div className={`step ${currentStep >= 2 ? 'active' : ''}`}>2</div>
-              <div className={`step-line ${currentStep >= 3 ? 'active' : ''}`}></div>
-              <div className={`step ${currentStep >= 3 ? 'active' : ''}`}>3</div>
             </div>
 
             <div className="step-title">
-              {currentStep === 1 && 'Step 1: Select User Type'}
-              {currentStep === 2 && 'Step 2: Location Details'}
-              {currentStep === 3 && 'Step 3: Condition Details'}
+              {currentStep === 1 && 'Step 1: Location Details'}
+              {currentStep === 2 && 'Step 2: Condition Details'}
             </div>
 
             <form className="form-content">
-              {/* Step 1: User Type */}
+              {/* Step 1: Location Details */}
               {currentStep === 1 && (
-                <div className="form-step">
-                  <div className="form-group">
-                    <label className="form-label">Select Your Type *</label>
-                    <div className="radio-group">
-                      <label className="radio-option">
-                        <input
-                          type="radio"
-                          name="userType"
-                          value="student"
-                          checked={userType === 'student'}
-                          onChange={handleUserTypeChange}
-                        />
-                        <span className="radio-label">Student</span>
-                      </label>
-                      <label className="radio-option">
-                        <input
-                          type="radio"
-                          name="userType"
-                          value="faculty"
-                          checked={userType === 'faculty'}
-                          onChange={handleUserTypeChange}
-                        />
-                        <span className="radio-label">Faculty</span>
-                      </label>
-                      <label className="radio-option">
-                        <input
-                          type="radio"
-                          name="userType"
-                          value="data_collector"
-                          checked={userType === 'data_collector'}
-                          onChange={handleUserTypeChange}
-                        />
-                        <span className="radio-label">Data Collector</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 2: Location Details */}
-              {currentStep === 2 && (
                 <div className="form-step">
                   <div className="form-group">
                     <label htmlFor="block" className="form-label">Block *</label>
@@ -695,8 +682,8 @@ function DataCollector({ userName, onLogout }) {
                 </div>
               )}
 
-              {/* Step 3: Condition Details */}
-              {currentStep === 3 && (
+              {/* Step 2: Condition Details */}
+              {currentStep === 2 && (
                 <div className="form-step">
                   {/* Section 1: Overall Condition Status */}
                   <div className="form-section">
@@ -1095,12 +1082,12 @@ function DataCollector({ userName, onLogout }) {
                     Previous
                   </button>
                 )}
-                {currentStep < 3 && (
+                {currentStep < 2 && (
                   <button type="button" className="btn-primary" onClick={handleNextStep}>
                     Next
                   </button>
                 )}
-                {currentStep === 3 && (
+                {currentStep === 2 && (
                   <button type="button" className="btn-primary" onClick={handleSubmit} disabled={loading}>
                     {loading ? 'Submitting...' : 'Submit Report'}
                   </button>
@@ -1124,7 +1111,7 @@ function DataCollector({ userName, onLogout }) {
                 {sortIssuesByLatest(issues).map((issue) => (
                   <div key={issue._id} className="issue-card">
                     <div className="issue-header">
-                      <span className="issue-type">{issue.userType}</span>
+                      <span className="issue-type">{formatUserType(issue.userType)}</span>
                       <span className="issue-status">{getDisplayStatus(issue)}</span>
                       <button 
                         className="delete-btn"
@@ -1255,5 +1242,3 @@ function DataCollector({ userName, onLogout }) {
 }
 
 export default DataCollector;
-
-

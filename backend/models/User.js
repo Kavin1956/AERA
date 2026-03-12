@@ -10,6 +10,11 @@ const userSchema = new mongoose.Schema({
     enum: ['data_collector', 'manager', 'technician'],
     required: true
   },
+  userType: {
+    type: String,
+    enum: ['student', 'faculty', 'data_collector'],
+    default: 'data_collector'
+  },
   technicianType: String
 });
 

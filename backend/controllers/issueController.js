@@ -118,7 +118,7 @@ exports.createIssue = async (req, res) => {
 
     const authenticatedUser = req.user?.email
       ? req.user
-      : await User.findById(req.user.id).select('fullName email username');
+      : await User.findById(req.user.id).select('fullName email username userType');
 
     if (!authenticatedUser) {
       return res.status(401).json({ message: 'Authenticated user not found' });
@@ -127,6 +127,7 @@ exports.createIssue = async (req, res) => {
     const issuePayload = {
       ...req.body,
       submittedBy: req.user.id,
+      userType: authenticatedUser.userType || req.body.userType || 'data_collector',
       reporterName: authenticatedUser.fullName || authenticatedUser.username || 'Unknown User',
       reporterEmail: authenticatedUser.email || ''
     };

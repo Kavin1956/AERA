@@ -3,6 +3,12 @@ import { useNavigate, Link } from 'react-router-dom';
 import '../styles/Login.css';
 import { authAPI } from '../services/api';
 
+const resolveStoredUserType = (userRole, userType) => {
+  if (userType) return userType;
+  if (userRole === 'data_collector') return 'data_collector';
+  return '';
+};
+
 const getLoginErrorMessage = (err) => {
   const status = err.response?.status;
 
@@ -44,7 +50,8 @@ function Login({ onLogin }) {
 
     try {
       const response = await authAPI.login(username, password);
-      const { token, role: userRole, username: userName, fullName, email } = response.data;
+      const { token, role: userRole, username: userName, fullName, email, userType } = response.data;
+      const storedUserType = resolveStoredUserType(userRole, userType);
       
       // Store token and user info in sessionStorage (tab-specific, not shared across tabs)
       sessionStorage.setItem('token', token);
@@ -52,6 +59,7 @@ function Login({ onLogin }) {
       sessionStorage.setItem('userName', userName);
       sessionStorage.setItem('userFullName', fullName || '');
       sessionStorage.setItem('userEmail', email || '');
+      sessionStorage.setItem('userType', storedUserType);
       
       onLogin(userName, userRole);
       
