@@ -65,6 +65,11 @@ const getLocationDetail = (location = {}, data = {}) => {
     detailValue: locationName || location.roomNumber || data.roomNumber || ''
   };
 };
+
+const getReporterDetails = (task = {}) => ({
+  name: task.reporterName || task.reporter?.name || task.submittedBy?.fullName || task.submittedBy?.username || 'Unknown',
+  email: task.reporterEmail || task.reporter?.email || task.submittedBy?.email || 'Not provided'
+});
 const WARNING_COPY = {
   notSolved: '⚠ Issue not solved yet. Please take action.',
   noResponse: '⚠ Please update the issue status.'
@@ -371,7 +376,10 @@ function Technician({ userName, onLogout }) {
                       <strong>Problem Level:</strong> {task.problemLevel || task.data?.problemLevel || 'Unknown'}
                     </p>
                     <p className="reported-by">
-                      <strong>Reported by:</strong> {task.submittedBy?.fullName || task.submittedBy || 'System'}
+                      <strong>Reported by:</strong> {getReporterDetails(task).name}
+                    </p>
+                    <p className="reported-by">
+                      <strong>Email:</strong> {getReporterDetails(task).email}
                     </p>
                     {task.data?.otherSuggestions && (
                       <p className="update-notes">
@@ -445,31 +453,8 @@ function Technician({ userName, onLogout }) {
                 {/* Reporter Information - Dynamic based on userType */}
                 <div className="detail-section">
                   <h4>Reporter Information</h4>
-                  {selectedTask.userType === 'student' && (
-                    <>
-                      <p><strong>Type:</strong> Student</p>
-                      <p><strong>Name:</strong> {selectedTask.data?.name || selectedTask.name || 'Student'}</p>
-                      <p><strong>Roll Number:</strong> {selectedTask.data?.rollNumber || selectedTask.rollNumber || 'Not provided'}</p>
-                      <p><strong>Department:</strong> {selectedTask.data?.dept || selectedTask.dept || 'Not provided'}</p>
-                      <p><strong>Email:</strong> {selectedTask.data?.email || selectedTask.submittedBy?.email || 'Not provided'}</p>
-                    </>
-                  )}
-                  {selectedTask.userType === 'faculty' && (
-                    <>
-                      <p><strong>Type:</strong> Faculty</p>
-                      <p><strong>Name:</strong> {selectedTask.data?.name || selectedTask.name || 'Faculty'}</p>
-                      <p><strong>Faculty ID:</strong> {selectedTask.data?.facultyId || selectedTask.facultyId || 'Not provided'}</p>
-                      <p><strong>Email:</strong> {selectedTask.data?.email || selectedTask.submittedBy?.email || 'Not provided'}</p>
-                    </>
-                  )}
-                  {selectedTask.userType === 'data_collector' && (
-                    <>
-                      <p><strong>Type:</strong> Data Collector</p>
-                      <p><strong>Name:</strong> {selectedTask.data?.name || selectedTask.name || 'Data Collector'}</p>
-                      <p><strong>ID:</strong> {selectedTask.data?.collectorId || selectedTask.collectorId || 'Not provided'}</p>
-                      <p><strong>Email:</strong> {selectedTask.data?.email || selectedTask.submittedBy?.email || 'Not provided'}</p>
-                    </>
-                  )}
+                  <p><strong>Reported by:</strong> {getReporterDetails(selectedTask).name}</p>
+                  <p><strong>Email:</strong> {getReporterDetails(selectedTask).email}</p>
                 </div>
 
                 {/* Location Details */}

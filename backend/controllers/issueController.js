@@ -95,10 +95,34 @@ exports.createIssue = async (req, res) => {
       console.debug('Issue Data:', req.body);
     }
 
-    const issue = await Issue.create({
+    const authenticatedUser = req.user?.email
+      ? req.user
+      : await User.findById(req.user.id).select('fullName email username');
+
+    if (!authenticatedUser) {
+      return res.status(401).json({ message: 'Authenticated user not found' });
+    }
+
+    const issuePayload = {
       ...req.body,
-      submittedBy: req.user.id
-    });
+      submittedBy: req.user.id,
+      reporterName: authenticatedUser.fullName || authenticatedUser.username || 'Unknown User',
+      reporterEmail: authenticatedUser.email || ''
+    };
+
+    delete issuePayload.reporter;
+
+    if (issuePayload.data && typeof issuePayload.data === 'object') {
+      delete issuePayload.data.name;
+      delete issuePayload.data.email;
+      delete issuePayload.data.rollNumber;
+      delete issuePayload.data.year;
+      delete issuePayload.data.dept;
+      delete issuePayload.data.facultyId;
+      delete issuePayload.data.collectorId;
+    }
+
+    const issue = await Issue.create(issuePayload);
 
     // Keep a single informative server log for successful creates
     console.info('✅ Issue created:', issue._id);
@@ -153,7 +177,7 @@ exports.getAllIssues = async (req, res) => {
     }
 
     const issues = await Issue.find(filter)
-      .populate('submittedBy', 'username fullName')
+      .populate('submittedBy', 'username fullName email')
       .populate('assignedTechnician', 'username fullName technicianType')
       .populate('assignedTechnicians', 'username fullName technicianType')
       .populate('technicianAssignments.technicianId', 'username fullName technicianType');
@@ -272,7 +296,7 @@ exports.assignIssue = async (req, res) => {
       },
       { new: true }
     )
-      .populate('submittedBy', 'username fullName')
+      .populate('submittedBy', 'username fullName email')
       .populate('assignedTechnician', 'username fullName technicianType')
       .populate('assignedTechnicians', 'username fullName technicianType')
       .populate('technicianAssignments.technicianId', 'username fullName technicianType');
@@ -306,7 +330,7 @@ exports.completeIssue = async (req, res) => {
         'timestamps.completed': new Date()
       },
       { new: true }
-    ).populate('submittedBy', 'username fullName')
+    ).populate('submittedBy', 'username fullName email')
      .populate('assignedTechnician', 'username fullName technicianType');
 
     if (!issue) {
@@ -379,7 +403,7 @@ exports.updateIssueStatus = async (req, res) => {
       update,
       { new: true }
     )
-      .populate('submittedBy', 'username fullName')
+      .populate('submittedBy', 'username fullName email')
       .populate('assignedTechnician', 'username fullName technicianType')
       .populate('assignedTechnicians', 'username fullName technicianType')
       .populate('technicianAssignments.technicianId', 'username fullName technicianType');

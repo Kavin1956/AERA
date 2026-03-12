@@ -64,6 +64,11 @@ const getLocationDetails = (location = {}, data = {}) => {
     detailValue: locationName || location.roomNumber || data.roomNumber || ''
   };
 };
+
+const getReporterDetails = (issue = {}) => ({
+  name: issue.reporterName || issue.reporter?.name || issue.submittedBy?.fullName || issue.submittedBy?.username || 'Unknown',
+  email: issue.reporterEmail || issue.reporter?.email || issue.submittedBy?.email || 'Not provided'
+});
 const WARNING_COPY = {
   notSolved: '⚠ Issue not solved yet. Please take action.',
   noResponse: '⚠ No response from technician.'
@@ -869,34 +874,9 @@ function Manager({ userName, onLogout }) {
                 {/* Reporter Information - Dynamic based on userType */}
                 <div className="detail-section">
                   <h4>Reporter Information</h4>
-                  
-                  {selectedIssue.userType === 'student' && (
-                    <>
-                      <p><strong>Type:</strong> Student</p>
-                      <p><strong>Name:</strong> {selectedIssue.reporter?.name || selectedIssue.data?.name || selectedIssue.name || 'Student'}</p>
-                      <p><strong>Roll Number:</strong> {selectedIssue.reporter?.rollNumber || selectedIssue.data?.rollNumber || selectedIssue.rollNumber || 'Not provided'}</p>
-                      <p><strong>Department:</strong> {selectedIssue.reporter?.dept || selectedIssue.data?.dept || selectedIssue.dept || 'Not provided'}</p>
-                      <p><strong>Email:</strong> {selectedIssue.reporter?.email || selectedIssue.data?.email || selectedIssue.submittedBy?.email || 'Not provided'}</p>
-                    </>
-                  )}
-
-                  {selectedIssue.userType === 'faculty' && (
-                    <>
-                      <p><strong>Type:</strong> Faculty</p>
-                      <p><strong>Name:</strong> {selectedIssue.reporter?.name || selectedIssue.data?.name || selectedIssue.name || 'Faculty'}</p>
-                      <p><strong>Faculty ID:</strong> {selectedIssue.data?.facultyId || selectedIssue.facultyId || 'Not provided'}</p>
-                      <p><strong>Email:</strong> {selectedIssue.reporter?.email || selectedIssue.data?.email || selectedIssue.submittedBy?.email || 'Not provided'}</p>
-                    </>
-                  )}
-
-                  {selectedIssue.userType === 'data_collector' && (
-                    <>
-                      <p><strong>Type:</strong> Data Collector</p>
-                      <p><strong>Name:</strong> {selectedIssue.reporter?.name || selectedIssue.data?.name || selectedIssue.name || 'Data Collector'}</p>
-                      <p><strong>ID:</strong> {selectedIssue.data?.collectorId || selectedIssue.collectorId || 'Not provided'}</p>
-                      <p><strong>Email:</strong> {selectedIssue.reporter?.email || selectedIssue.data?.email || selectedIssue.submittedBy?.email || 'Not provided'}</p>
-                    </>
-                  )}
+                  <p><strong>Type:</strong> {selectedIssue.userType === 'student' ? 'Student' : selectedIssue.userType === 'faculty' ? 'Faculty' : 'Data Collector'}</p>
+                  <p><strong>Name:</strong> {getReporterDetails(selectedIssue).name}</p>
+                  <p><strong>Email:</strong> {getReporterDetails(selectedIssue).email}</p>
                 </div>
 
                 {/* Location Details */}

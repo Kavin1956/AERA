@@ -173,7 +173,7 @@ exports.getAssignedTasks = async (req, res) => {
     }
 
     const tasks = await Issue.find(filter)
-      .populate('submittedBy', 'username fullName')
+      .populate('submittedBy', 'username fullName email')
       .populate('assignedTechnician', 'username fullName technicianType')
       .populate('assignedTechnicians', 'username fullName technicianType')
       .populate('technicianAssignments.technicianId', 'username fullName technicianType');
@@ -271,7 +271,7 @@ exports.updateTaskStatus = async (req, res) => {
     await issue.save();
 
     const populatedIssue = await Issue.findById(req.params.id)
-      .populate('submittedBy', 'username fullName')
+      .populate('submittedBy', 'username fullName email')
       .populate('assignedTechnician', 'username fullName technicianType')
       .populate('assignedTechnicians', 'username fullName technicianType')
       .populate('technicianAssignments.technicianId', 'username fullName technicianType');

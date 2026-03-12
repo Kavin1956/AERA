@@ -7,6 +7,8 @@ const issueSchema = new mongoose.Schema({
   },
 
   userType: String,
+  reporterName: String,
+  reporterEmail: String,
 
   location: {
     category: String,

@@ -210,31 +210,6 @@ function DataCollector({ userName, onLogout }) {
     return true;
   };
 
-  const validateStep2 = () => {
-    if (!formData.name || !formData.email) {
-      setError('Name and email are required');
-      return false;
-    }
-
-    if (userType === 'student') {
-      if (!formData.rollNumber || !formData.year || !formData.dept) {
-        setError('Please fill in all student details');
-        return false;
-      }
-    } else if (userType === 'faculty') {
-      if (!formData.facultyId || !formData.dept) {
-        setError('Please fill in all faculty details');
-        return false;
-      }
-    } else if (userType === 'data_collector') {
-      if (!formData.collectorId) {
-        setError('Please fill in collector ID');
-        return false;
-      }
-    }
-    return true;
-  };
-
   const validateStep3 = () => {
     const locationInputConfig = getSelectedLocationInputConfig();
     const locationInputValue = locationInputConfig ? String(formData[locationInputConfig.inputName] || '').trim() : '';
@@ -282,10 +257,8 @@ function DataCollector({ userName, onLogout }) {
   const handleNextStep = () => {
     if (currentStep === 1 && validateStep1()) {
       setCurrentStep(2);
-    } else if (currentStep === 2 && validateStep2()) {
+    } else if (currentStep === 2 && validateStep3()) {
       setCurrentStep(3);
-    } else if (currentStep === 3 && validateStep3()) {
-      setCurrentStep(4);
     }
   };
 
@@ -494,6 +467,8 @@ function DataCollector({ userName, onLogout }) {
 
       const issueData = {
         userType,
+        reporterName: sessionStorage.getItem('userFullName') || displayName || sessionStorage.getItem('userName') || '',
+        reporterEmail: sessionStorage.getItem('userEmail') || '',
         location: {
           category: locationCategory,
           block: formData.block,
@@ -502,23 +477,23 @@ function DataCollector({ userName, onLogout }) {
           locationName: locationInputConfig?.inputName === 'roomNumber' ? '' : locationInputValue,
           locationFieldLabel: locationInputConfig?.inputLabel || ''
         },
-        reporter: {
-          name: formData.name,
-          email: formData.email,
-          rollNumber: formData.rollNumber,
-          year: formData.year,
-          dept: formData.dept
-        },
         condition: formData.condition,
         problemLevel,
         otherSuggestions: formData.otherSuggestions,
         specificIssues: reportedIssues, // Array of specific issues found
         issues: getIssueCodes(), // Array of issue codes (e.g., ["slowInternet", "projectorNotWorking"])
         data: {
-          ...formData,
+          block: formData.block,
+          floor: formData.floor,
+          roomNumber: formData.roomNumber,
+          laboratoryName: formData.laboratoryName,
+          seminarHallName: formData.seminarHallName,
+          specialLabName: formData.specialLabName,
           locationCategory,
           locationName: locationInputValue,
-          locationFieldLabel: locationInputConfig?.inputLabel || ''
+          locationFieldLabel: locationInputConfig?.inputLabel || '',
+          condition: formData.condition,
+          otherSuggestions: formData.otherSuggestions
         },
         priority,
         technicianType,
@@ -588,15 +563,12 @@ function DataCollector({ userName, onLogout }) {
               <div className={`step ${currentStep >= 2 ? 'active' : ''}`}>2</div>
               <div className={`step-line ${currentStep >= 3 ? 'active' : ''}`}></div>
               <div className={`step ${currentStep >= 3 ? 'active' : ''}`}>3</div>
-              <div className={`step-line ${currentStep >= 4 ? 'active' : ''}`}></div>
-              <div className={`step ${currentStep >= 4 ? 'active' : ''}`}>4</div>
             </div>
 
             <div className="step-title">
               {currentStep === 1 && 'Step 1: Select User Type'}
-              {currentStep === 2 && 'Step 2: Personal Details'}
-              {currentStep === 3 && 'Step 3: Location Details'}
-              {currentStep === 4 && 'Step 4: Condition Details'}
+              {currentStep === 2 && 'Step 2: Location Details'}
+              {currentStep === 3 && 'Step 3: Condition Details'}
             </div>
 
             <form className="form-content">
@@ -641,135 +613,8 @@ function DataCollector({ userName, onLogout }) {
                 </div>
               )}
 
-              {/* Step 2: Personal Details */}
+              {/* Step 2: Location Details */}
               {currentStep === 2 && (
-                <div className="form-step">
-                  <div className="form-group">
-                    <label htmlFor="name" className="form-label">Name *</label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      className="form-input"
-                      value={formData.name || ''}
-                      onChange={handleChange}
-                      placeholder="Enter your full name"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="email" className="form-label">Email *</label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      className="form-input"
-                      value={formData.email || ''}
-                      onChange={handleChange}
-                      placeholder="Enter your email address"
-                    />
-                  </div>
-
-                  {userType === 'student' && (
-                    <>
-                      <div className="form-group">
-                        <label htmlFor="rollNumber" className="form-label">Roll Number *</label>
-                        <input
-                          type="text"
-                          id="rollNumber"
-                          name="rollNumber"
-                          className="form-input"
-                          value={formData.rollNumber || ''}
-                          onChange={handleChange}
-                          placeholder="Enter your roll number"
-                        />
-                      </div>
-
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label htmlFor="year" className="form-label">Year *</label>
-                          <select
-                            id="year"
-                            name="year"
-                            className="form-input form-select"
-                            value={formData.year || ''}
-                            onChange={handleChange}
-                          >
-                            <option value="">Select Year</option>
-                            <option value="1st">1st Year</option>
-                            <option value="2nd">2nd Year</option>
-                            <option value="3rd">3rd Year</option>
-                            <option value="4th">4th Year</option>
-                          </select>
-                        </div>
-
-                        <div className="form-group">
-                          <label htmlFor="dept" className="form-label">Department *</label>
-                          <input
-                            type="text"
-                            id="dept"
-                            name="dept"
-                            className="form-input"
-                            value={formData.dept || ''}
-                            onChange={handleChange}
-                            placeholder="Enter your department"
-                          />
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {userType === 'faculty' && (
-                    <>
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label htmlFor="facultyId" className="form-label">Faculty ID *</label>
-                          <input
-                            type="text"
-                            id="facultyId"
-                            name="facultyId"
-                            className="form-input"
-                            value={formData.facultyId || ''}
-                            onChange={handleChange}
-                            placeholder="Enter your faculty ID"
-                          />
-                        </div>
-
-                        <div className="form-group">
-                          <label htmlFor="dept" className="form-label">Department *</label>
-                          <input
-                            type="text"
-                            id="dept"
-                            name="dept"
-                            className="form-input"
-                            value={formData.dept || ''}
-                            onChange={handleChange}
-                            placeholder="Enter your department"
-                          />
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {userType === 'data_collector' && (
-                    <div className="form-group">
-                      <label htmlFor="collectorId" className="form-label">Collector ID *</label>
-                      <input
-                        type="text"
-                        id="collectorId"
-                        name="collectorId"
-                        className="form-input"
-                        value={formData.collectorId || ''}
-                        onChange={handleChange}
-                        placeholder="Enter your collector ID"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Step 3: Location Details */}
-              {currentStep === 3 && (
                 <div className="form-step">
                   <div className="form-group">
                     <label htmlFor="block" className="form-label">Block *</label>
@@ -842,8 +687,8 @@ function DataCollector({ userName, onLogout }) {
                 </div>
               )}
 
-              {/* Step 4: Condition Details */}
-              {currentStep === 4 && (
+              {/* Step 3: Condition Details */}
+              {currentStep === 3 && (
                 <div className="form-step">
                   {/* Section 1: Overall Condition Status */}
                   <div className="form-section">
@@ -1242,12 +1087,12 @@ function DataCollector({ userName, onLogout }) {
                     Previous
                   </button>
                 )}
-                {currentStep < 4 && (
+                {currentStep < 3 && (
                   <button type="button" className="btn-primary" onClick={handleNextStep}>
                     Next
                   </button>
                 )}
-                {currentStep === 4 && (
+                {currentStep === 3 && (
                   <button type="button" className="btn-primary" onClick={handleSubmit} disabled={loading}>
                     {loading ? 'Submitting...' : 'Submit Report'}
                   </button>

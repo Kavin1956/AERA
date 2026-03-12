@@ -44,12 +44,14 @@ function Login({ onLogin }) {
 
     try {
       const response = await authAPI.login(username, password);
-      const { token, role: userRole, username: userName } = response.data;
+      const { token, role: userRole, username: userName, fullName, email } = response.data;
       
       // Store token and user info in sessionStorage (tab-specific, not shared across tabs)
       sessionStorage.setItem('token', token);
       sessionStorage.setItem('userRole', userRole);
       sessionStorage.setItem('userName', userName);
+      sessionStorage.setItem('userFullName', fullName || '');
+      sessionStorage.setItem('userEmail', email || '');
       
       onLogin(userName, userRole);
       

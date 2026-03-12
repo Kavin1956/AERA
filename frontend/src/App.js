@@ -26,6 +26,8 @@ function App() {
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('userRole');
       sessionStorage.removeItem('userName');
+      sessionStorage.removeItem('userFullName');
+      sessionStorage.removeItem('userEmail');
     }
   }, [isAuthenticated]);
 
@@ -54,6 +56,8 @@ function App() {
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('userRole');
     sessionStorage.removeItem('userName');
+    sessionStorage.removeItem('userFullName');
+    sessionStorage.removeItem('userEmail');
   };
 
   return (

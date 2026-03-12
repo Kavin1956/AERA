@@ -248,7 +248,8 @@ exports.login = async (req, res) => {
         role: user.role,
         username: user.username,
         technicianType: user.technicianType,
-        fullName: user.fullName
+        fullName: user.fullName,
+        email: user.email
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
@@ -258,7 +259,9 @@ exports.login = async (req, res) => {
       token,
       role: user.role,
       username: user.username,
-      technicianType: user.technicianType
+      technicianType: user.technicianType,
+      fullName: user.fullName,
+      email: user.email
     });
   } catch (error) {
     console.error('Login error:', error);
