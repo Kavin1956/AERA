@@ -28,6 +28,72 @@ const TECHNICIAN_TYPE_LABELS = {
   general_support: 'General Support'
 };
 
+const LOCATION_TYPE_FIELDS = {
+  classroom: {
+    label: 'Classroom',
+    inputName: 'roomNumber',
+    inputLabel: 'Room Number',
+    placeholder: 'Enter room number'
+  },
+  laboratory: {
+    label: 'Laboratory',
+    inputName: 'laboratoryName',
+    inputLabel: 'Laboratory Name',
+    placeholder: 'Enter laboratory name'
+  },
+  seminar_hall: {
+    label: 'Seminar Hall',
+    inputName: 'seminarHallName',
+    inputLabel: 'Seminar Hall Name',
+    placeholder: 'Enter seminar hall name'
+  },
+  special_lab: {
+    label: 'Special Lab',
+    inputName: 'specialLabName',
+    inputLabel: 'Special Lab Name',
+    placeholder: 'Enter special lab name'
+  }
+};
+
+const normalizeLocationCategory = (category = '') => {
+  const normalized = String(category).trim().toLowerCase();
+
+  if (normalized === 'lab') return 'laboratory';
+  if (normalized === 'seminar') return 'seminar_hall';
+  if (normalized === 'seminar hall') return 'seminar_hall';
+  if (normalized === 'special lab') return 'special_lab';
+
+  return normalized;
+};
+
+const getLocationDetails = (location = {}, data = {}) => {
+  const normalizedCategory = normalizeLocationCategory(location.category || data.locationCategory);
+  const config = LOCATION_TYPE_FIELDS[normalizedCategory];
+  const locationName = location.locationName || data.locationName || '';
+
+  if (normalizedCategory === 'classroom') {
+    return {
+      categoryLabel: LOCATION_TYPE_FIELDS.classroom.label,
+      detailLabel: LOCATION_TYPE_FIELDS.classroom.inputLabel,
+      detailValue: location.roomNumber || data.roomNumber || ''
+    };
+  }
+
+  if (config) {
+    return {
+      categoryLabel: config.label,
+      detailLabel: config.inputLabel,
+      detailValue: locationName || data[config.inputName] || ''
+    };
+  }
+
+  return {
+    categoryLabel: location.category || data.locationCategory || '',
+    detailLabel: 'Location',
+    detailValue: locationName || location.roomNumber || data.roomNumber || ''
+  };
+};
+
 const formatAssignmentStatus = (status) => {
   switch (status) {
     case 'completed':
@@ -121,9 +187,20 @@ function DataCollector({ userName, onLogout }) {
   };
 
   const handleLocationChange = (e) => {
-    setLocationCategory(e.target.value);
+    const nextCategory = e.target.value;
+
+    setLocationCategory(nextCategory);
+    setFormData(prev => ({
+      ...prev,
+      roomNumber: '',
+      laboratoryName: '',
+      seminarHallName: '',
+      specialLabName: ''
+    }));
     setError('');
   };
+
+  const getSelectedLocationInputConfig = () => LOCATION_TYPE_FIELDS[normalizeLocationCategory(locationCategory)];
 
   const validateStep1 = () => {
     if (!userType) {
@@ -159,8 +236,13 @@ function DataCollector({ userName, onLogout }) {
   };
 
   const validateStep3 = () => {
-    if (!formData.block || !formData.floor || !formData.roomNumber || !locationCategory) {
-      setError('Please fill in all location details and select location type');
+    const locationInputConfig = getSelectedLocationInputConfig();
+    const locationInputValue = locationInputConfig ? String(formData[locationInputConfig.inputName] || '').trim() : '';
+
+    if (!formData.block || !formData.floor || !locationCategory || !locationInputConfig || !locationInputValue) {
+      setError(locationInputConfig
+        ? `Please fill in block, floor, location type, and ${locationInputConfig.inputLabel.toLowerCase()}`
+        : 'Please fill in all location details and select location type');
       return false;
     }
     return true;
@@ -370,6 +452,10 @@ function DataCollector({ userName, onLogout }) {
     const { priority, technicianType } = calculatePriority();
     const problemLevel = calculateProblemLevel();
     const reportedIssues = getReportedIssues();
+    const locationInputConfig = getSelectedLocationInputConfig();
+    const locationInputValue = locationInputConfig
+      ? String(formData[locationInputConfig.inputName] || '').trim()
+      : '';
 
     setLoading(true);
     setError('');
@@ -380,7 +466,7 @@ function DataCollector({ userName, onLogout }) {
       console.log('Location Category:', locationCategory);
       console.log('Location Block:', formData.block);
       console.log('Location Floor:', formData.floor);
-      console.log('Location Room:', formData.roomNumber);
+      console.log(`${locationInputConfig?.inputLabel || 'Location'}:`, locationInputValue);
       console.log('Condition:', formData.condition);
       console.log('Priority:', priority);
       console.log('Technician Type:', technicianType);
@@ -396,6 +482,8 @@ function DataCollector({ userName, onLogout }) {
           block: formData.block,
           floor: formData.floor,
           roomNumber: formData.roomNumber,
+          locationName: locationInputValue,
+          locationFieldLabel: locationInputConfig?.inputLabel,
           condition: formData.condition,
           problemLevel,
           priority,
@@ -410,7 +498,9 @@ function DataCollector({ userName, onLogout }) {
           category: locationCategory,
           block: formData.block,
           floor: formData.floor,
-          roomNumber: formData.roomNumber
+          roomNumber: locationInputConfig?.inputName === 'roomNumber' ? locationInputValue : '',
+          locationName: locationInputConfig?.inputName === 'roomNumber' ? '' : locationInputValue,
+          locationFieldLabel: locationInputConfig?.inputLabel || ''
         },
         reporter: {
           name: formData.name,
@@ -424,7 +514,12 @@ function DataCollector({ userName, onLogout }) {
         otherSuggestions: formData.otherSuggestions,
         specificIssues: reportedIssues, // Array of specific issues found
         issues: getIssueCodes(), // Array of issue codes (e.g., ["slowInternet", "projectorNotWorking"])
-        data: formData,
+        data: {
+          ...formData,
+          locationCategory,
+          locationName: locationInputValue,
+          locationFieldLabel: locationInputConfig?.inputLabel || ''
+        },
         priority,
         technicianType,
         status: 'submitted',
@@ -710,21 +805,6 @@ function DataCollector({ userName, onLogout }) {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="roomNumber" className="form-label">Room Number *</label>
-                    <input
-                      type="text"
-                      id="roomNumber"
-                      name="roomNumber"
-                      className="form-input"
-                      value={formData.roomNumber || ''}
-                      onChange={handleChange}
-                      onInput={handleChange}
-                      placeholder="Enter room number"
-                      autoComplete="off"
-                    />
-                  </div>
-
-                  <div className="form-group">
                     <label htmlFor="locationType" className="form-label">Location Type *</label>
                     <select
                       id="locationType"
@@ -735,10 +815,30 @@ function DataCollector({ userName, onLogout }) {
                     >
                       <option value="">Select Location Type</option>
                       <option value="classroom">Classroom</option>
-                      <option value="lab">Lab</option>
-                      <option value="seminar">Seminar Hall</option>
+                      <option value="laboratory">Laboratory</option>
+                      <option value="seminar_hall">Seminar Hall</option>
+                      <option value="special_lab">Special Lab</option>
                     </select>
                   </div>
+
+                  {getSelectedLocationInputConfig() && (
+                    <div className="form-group">
+                      <label htmlFor={getSelectedLocationInputConfig().inputName} className="form-label">
+                        {getSelectedLocationInputConfig().inputLabel} *
+                      </label>
+                      <input
+                        type="text"
+                        id={getSelectedLocationInputConfig().inputName}
+                        name={getSelectedLocationInputConfig().inputName}
+                        className="form-input"
+                        value={formData[getSelectedLocationInputConfig().inputName] || ''}
+                        onChange={handleChange}
+                        onInput={handleChange}
+                        placeholder={getSelectedLocationInputConfig().placeholder}
+                        autoComplete="off"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1185,7 +1285,16 @@ function DataCollector({ userName, onLogout }) {
                       {issue.timestamps?.submitted ? new Date(issue.timestamps.submitted).toLocaleString() : 'Just now'}
                     </p>
                     <p className="issue-info">
-                      <strong>Location:</strong> {issue.location?.block} Block, {issue.location?.floor}, Room {issue.location?.roomNumber || 'N/A'}
+                      <strong>Location:</strong> {[
+                        issue.location?.block ? `${issue.location.block} Block` : '',
+                        issue.location?.floor || '',
+                        (() => {
+                          const locationDetails = getLocationDetails(issue.location, issue.data);
+                          return locationDetails.detailValue
+                            ? `${locationDetails.detailLabel}: ${locationDetails.detailValue}`
+                            : '';
+                        })()
+                      ].filter(Boolean).join(', ') || 'N/A'}
                     </p>
                     <p className="issue-info">
                       <strong>Condition:</strong> {issue.condition}

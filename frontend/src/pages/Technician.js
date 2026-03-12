@@ -5,9 +5,69 @@ import Navbar from '../components/Navbar';
 import { technicianAPI } from '../services/api';
 
 const WARNING_THRESHOLD_HOURS = 5;
+const LOCATION_TYPE_LABELS = {
+  classroom: 'Classroom',
+  laboratory: 'Laboratory',
+  lab: 'Laboratory',
+  seminar_hall: 'Seminar Hall',
+  seminar: 'Seminar Hall',
+  special_lab: 'Special Lab'
+};
+
+const normalizeLocationCategory = (category = '') => {
+  const normalized = String(category).trim().toLowerCase();
+
+  if (normalized === 'seminar hall') return 'seminar_hall';
+  if (normalized === 'special lab') return 'special_lab';
+
+  return normalized;
+};
+
+const getLocationDetail = (location = {}, data = {}) => {
+  const normalizedCategory = normalizeLocationCategory(location.category || data.locationCategory);
+  const locationName = location.locationName || data.locationName || '';
+
+  if (normalizedCategory === 'classroom') {
+    return {
+      categoryLabel: LOCATION_TYPE_LABELS.classroom,
+      detailLabel: 'Room Number',
+      detailValue: location.roomNumber || data.roomNumber || ''
+    };
+  }
+
+  if (normalizedCategory === 'laboratory' || normalizedCategory === 'lab') {
+    return {
+      categoryLabel: LOCATION_TYPE_LABELS.laboratory,
+      detailLabel: 'Laboratory Name',
+      detailValue: locationName || data.laboratoryName || ''
+    };
+  }
+
+  if (normalizedCategory === 'seminar_hall' || normalizedCategory === 'seminar') {
+    return {
+      categoryLabel: LOCATION_TYPE_LABELS.seminar_hall,
+      detailLabel: 'Seminar Hall Name',
+      detailValue: locationName || data.seminarHallName || ''
+    };
+  }
+
+  if (normalizedCategory === 'special_lab') {
+    return {
+      categoryLabel: LOCATION_TYPE_LABELS.special_lab,
+      detailLabel: 'Special Lab Name',
+      detailValue: locationName || data.specialLabName || ''
+    };
+  }
+
+  return {
+    categoryLabel: location.category || data.locationCategory || '',
+    detailLabel: location.locationFieldLabel || data.locationFieldLabel || 'Room Number',
+    detailValue: locationName || location.roomNumber || data.roomNumber || ''
+  };
+};
 const WARNING_COPY = {
   notSolved: '⚠ Issue not solved yet. Please take action.',
-  noResponse: '⚠ No response from technician.'
+  noResponse: '⚠ Please update the issue status.'
 };
 
 
@@ -151,7 +211,9 @@ function Technician({ userName, onLogout }) {
     block: task?.location?.block || task?.data?.block || task?.block || '',
     floor: task?.location?.floor || task?.data?.floor || task?.floor || '',
     roomNumber: task?.location?.roomNumber || task?.data?.roomNumber || task?.roomNumber || '',
-    category: task?.location?.category || task?.data?.locationCategory || task?.locationCategory || ''
+    category: task?.location?.category || task?.data?.locationCategory || task?.locationCategory || '',
+    locationName: task?.location?.locationName || task?.data?.locationName || '',
+    locationFieldLabel: task?.location?.locationFieldLabel || task?.data?.locationFieldLabel || ''
   });
 
   // const getPriorityColor = (priority) => {
@@ -268,13 +330,18 @@ function Technician({ userName, onLogout }) {
               filteredTasks.map(task => {
                 const warning = getTaskWarningDetails(task);
                 const taskLocation = getTaskLocation(task);
+                const taskLocationDetail = getLocationDetail(taskLocation, task.data || {});
                 return (
                 <div key={task._id || task.id} className={`task-card ${warning.isDelayed ? 'task-card-delayed' : ''}`}>
                   <div className="task-header">
                     <h3>
-                      <span className="location-type">{taskLocation.category || task.userType || 'Location'}</span>
+                      <span className="location-type">{taskLocationDetail.categoryLabel || task.userType || 'Location'}</span>
                       <span className="room-info">
-                        Block {taskLocation.block || 'N/A'} • Floor {taskLocation.floor || 'N/A'} • Room {taskLocation.roomNumber || 'N/A'}
+                        {[
+                          `Block ${taskLocation.block || 'N/A'}`,
+                          `Floor ${taskLocation.floor || 'N/A'}`,
+                          `${taskLocationDetail.detailLabel} ${taskLocationDetail.detailValue || 'N/A'}`
+                        ].join(' • ')}
                       </span>
                     </h3>
                     <span
@@ -410,8 +477,8 @@ function Technician({ userName, onLogout }) {
                   <h4>Location Details</h4>
                   <p><strong>Block:</strong> {getTaskLocation(selectedTask).block || 'N/A'}</p>
                   <p><strong>Floor:</strong> {getTaskLocation(selectedTask).floor || 'N/A'}</p>
-                  <p><strong>Room Number:</strong> {getTaskLocation(selectedTask).roomNumber || 'N/A'}</p>
-                  <p><strong>Location Type:</strong> {getTaskLocation(selectedTask).category || 'N/A'}</p>
+                  <p><strong>{getLocationDetail(getTaskLocation(selectedTask), selectedTask.data || {}).detailLabel}:</strong> {getLocationDetail(getTaskLocation(selectedTask), selectedTask.data || {}).detailValue || 'N/A'}</p>
+                  <p><strong>Location Type:</strong> {getLocationDetail(getTaskLocation(selectedTask), selectedTask.data || {}).categoryLabel || 'N/A'}</p>
                 </div>
 
                 {/* Issue Details - Overall Condition and Issue */}

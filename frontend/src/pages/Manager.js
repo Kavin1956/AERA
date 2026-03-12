@@ -4,6 +4,66 @@ import Navbar from '../components/Navbar';
 import { issueAPI } from '../services/api';
 
 const WARNING_THRESHOLD_HOURS = 5;
+const LOCATION_TYPE_LABELS = {
+  classroom: 'Classroom',
+  laboratory: 'Laboratory',
+  lab: 'Laboratory',
+  seminar_hall: 'Seminar Hall',
+  seminar: 'Seminar Hall',
+  special_lab: 'Special Lab'
+};
+
+const normalizeLocationCategory = (category = '') => {
+  const normalized = String(category).trim().toLowerCase();
+
+  if (normalized === 'seminar hall') return 'seminar_hall';
+  if (normalized === 'special lab') return 'special_lab';
+
+  return normalized;
+};
+
+const getLocationDetails = (location = {}, data = {}) => {
+  const normalizedCategory = normalizeLocationCategory(location.category || data.locationCategory);
+  const locationName = location.locationName || data.locationName || '';
+
+  if (normalizedCategory === 'classroom') {
+    return {
+      categoryLabel: LOCATION_TYPE_LABELS.classroom,
+      detailLabel: 'Room Number',
+      detailValue: location.roomNumber || data.roomNumber || ''
+    };
+  }
+
+  if (normalizedCategory === 'laboratory' || normalizedCategory === 'lab') {
+    return {
+      categoryLabel: LOCATION_TYPE_LABELS.laboratory,
+      detailLabel: 'Laboratory Name',
+      detailValue: locationName || data.laboratoryName || ''
+    };
+  }
+
+  if (normalizedCategory === 'seminar_hall' || normalizedCategory === 'seminar') {
+    return {
+      categoryLabel: LOCATION_TYPE_LABELS.seminar_hall,
+      detailLabel: 'Seminar Hall Name',
+      detailValue: locationName || data.seminarHallName || ''
+    };
+  }
+
+  if (normalizedCategory === 'special_lab') {
+    return {
+      categoryLabel: LOCATION_TYPE_LABELS.special_lab,
+      detailLabel: 'Special Lab Name',
+      detailValue: locationName || data.specialLabName || ''
+    };
+  }
+
+  return {
+    categoryLabel: location.category || data.locationCategory || '',
+    detailLabel: location.locationFieldLabel || data.locationFieldLabel || 'Room Number',
+    detailValue: locationName || location.roomNumber || data.roomNumber || ''
+  };
+};
 const WARNING_COPY = {
   notSolved: '⚠ Issue not solved yet. Please take action.',
   noResponse: '⚠ No response from technician.'
@@ -217,9 +277,10 @@ function Manager({ userName, onLogout }) {
   };
 
   // Format location object into human-readable string
-  const formatLocation = (loc) => {
+  const formatLocation = (loc, data) => {
     if (!loc) return '';
     const parts = [];
+    const locationDetails = getLocationDetails(loc, data);
     if (loc.block) {
       // capitalize block string (first letter only)
       const b = loc.block.toLowerCase();
@@ -242,19 +303,19 @@ function Manager({ userName, onLogout }) {
       // floor text all lowercase
       parts.push(`${floorWordRaw} floor`);
     }
-    if (loc.roomNumber) {
-      parts.push(`Room no ${loc.roomNumber}`);
+    if (locationDetails.detailValue) {
+      parts.push(`${locationDetails.detailLabel} ${locationDetails.detailValue}`);
     }
-    if (loc.category) {
-      // lowercase category
-      parts.push(loc.category.toLowerCase());
+    if (locationDetails.categoryLabel) {
+      parts.push(locationDetails.categoryLabel);
     }
     return parts.filter(Boolean).join(', ');
   };
 
-  const formatLocationForTable = (loc) => {
+  const formatLocationForTable = (loc, data) => {
     if (!loc) return '';
     const parts = [];
+    const locationDetails = getLocationDetails(loc, data);
 
     if (loc.block) {
       parts.push(String(loc.block).toUpperCase());
@@ -285,8 +346,8 @@ function Manager({ userName, onLogout }) {
       parts.push(floorLabels[floorValue] || String(loc.floor));
     }
 
-    if (loc.roomNumber) {
-      parts.push(`Room no : ${loc.roomNumber}`);
+    if (locationDetails.detailValue) {
+      parts.push(`${locationDetails.detailLabel}: ${locationDetails.detailValue}`);
     }
 
     return parts.filter(Boolean).join(', ');
@@ -600,8 +661,8 @@ function Manager({ userName, onLogout }) {
                       return (
                         <div key={issue._id} className="delayed-issue-card">
                           <div>
-                            <strong>{formatLocation(issue.location) || 'Issue location unavailable'}</strong>
-                            <p>{issue.location?.category || 'Uncategorized issue'}</p>
+                            <strong>{formatLocation(issue.location, issue.data) || 'Issue location unavailable'}</strong>
+                            <p>{getLocationDetails(issue.location, issue.data).categoryLabel || 'Uncategorized issue'}</p>
                           </div>
                           <div>
                             <span className={`warning-note ${warning.status}`}>
@@ -670,9 +731,9 @@ function Manager({ userName, onLogout }) {
                         return (
                         <tr key={issue._id} className={`issue-row status-${issue.status} ${warning.isDelayed ? 'warning-delayed-row' : ''} ${isNewIssue(issue) ? 'new-issue-highlight' : ''}`}>
                           <td>IS{index + 1}</td>
-                          <td>{formatLocationForTable(issue.location) || '-'}</td>
+                          <td>{formatLocationForTable(issue.location, issue.data) || '-'}</td>
                           <td>{issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector'}</td>
-                          <td>{issue.location?.category || 'N/A'}</td>
+                          <td>{getLocationDetails(issue.location, issue.data).categoryLabel || 'N/A'}</td>
                           <td>
                             {/* priority shown as plain lowercase text */}
                             {issue.priority ? issue.priority.toLowerCase() : ''}
@@ -742,10 +803,10 @@ function Manager({ userName, onLogout }) {
                       <tr key={issue._id} className="issue-row status-completed">
                         <td>IS{index + 1}</td>
                         <td>
-                          {formatLocationForTable(issue.location) || '-'}
+                          {formatLocationForTable(issue.location, issue.data) || '-'}
                         </td>
                         <td>{issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector'}</td>
-                        <td>{issue.location?.category}</td>
+                        <td>{getLocationDetails(issue.location, issue.data).categoryLabel || 'N/A'}</td>
                         <td>
                           {issue.priority ? issue.priority.toLowerCase() : ''}
                         </td>
@@ -844,8 +905,8 @@ function Manager({ userName, onLogout }) {
                   {/* return to previous detailed layout for modal */}
                 <p><strong>Block:</strong> {selectedIssue.location?.block || 'N/A'}</p>
                 <p><strong>Floor:</strong> {selectedIssue.location?.floor || 'N/A'}</p>
-                <p><strong>Room Number:</strong> {selectedIssue.location?.roomNumber || 'N/A'}</p>
-                <p><strong>Location Type:</strong> {selectedIssue.location?.category || 'N/A'}</p>
+                <p><strong>{getLocationDetails(selectedIssue.location, selectedIssue.data).detailLabel}:</strong> {getLocationDetails(selectedIssue.location, selectedIssue.data).detailValue || 'N/A'}</p>
+                <p><strong>Location Type:</strong> {getLocationDetails(selectedIssue.location, selectedIssue.data).categoryLabel || 'N/A'}</p>
                 </div>
 
                 {/* Issue Details - Overall Condition and Issue */}

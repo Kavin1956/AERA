@@ -12,7 +12,9 @@ const issueSchema = new mongoose.Schema({
     category: String,
     block: String,
     floor: String,
-    roomNumber: String
+    roomNumber: String,
+    locationName: String,
+    locationFieldLabel: String
   },
 
   reporter: {
