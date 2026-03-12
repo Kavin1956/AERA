@@ -1,4 +1,5 @@
 const Issue = require('../models/issue');
+const Notification = require('../models/notification');
 
 const TECHNICIAN_ISSUE_CODES = {
   maintenance: ['whiteboardNeedsCleaning', 'whiteboardDamaged', 'brokenChairs', 'damagedTables'],
@@ -289,6 +290,9 @@ exports.updateTaskStatus = async (req, res) => {
     if (assignments.every((assignment) => assignment.status === 'completed')) {
       issue.status = 'completed';
       issue.timestamps.completed = new Date();
+      issue.warningAlert = false;
+      issue.warningMessage = '';
+      issue.lastWarningAlert = undefined;
     } else if (assignments.some((assignment) => assignment.status === 'in_progress' || assignment.status === 'completed')) {
       issue.status = 'in_progress';
       issue.timestamps.completed = undefined;
@@ -303,6 +307,9 @@ exports.updateTaskStatus = async (req, res) => {
       .join(' | ');
 
     await issue.save();
+    if (status === 'completed') {
+      await Notification.deleteMany({ issueId: issue._id });
+    }
 
     const populatedIssue = await Issue.findById(req.params.id)
       .populate('submittedBy', 'username fullName email')

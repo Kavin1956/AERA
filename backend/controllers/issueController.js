@@ -1,5 +1,6 @@
 const Issue = require('../models/issue');
 const User = require('../models/User');
+const Notification = require('../models/notification');
 
 const normalizeTechnicianTypes = (technicianTypes = [], technicianType) => {
   const rawTypes = Array.isArray(technicianTypes) ? technicianTypes : [];
@@ -402,7 +403,11 @@ exports.completeIssue = async (req, res) => {
     issue.status = 'completed';
     issue.timestamps = issue.timestamps || {};
     issue.timestamps.completed = new Date();
+    issue.warningAlert = false;
+    issue.warningMessage = '';
+    issue.lastWarningAlert = undefined;
     await issue.save();
+    await Notification.deleteMany({ issueId: issue._id });
 
     const populatedIssue = await Issue.findById(req.params.id)
       .populate('submittedBy', 'username fullName email')

@@ -112,6 +112,12 @@ const mergeNotifications = (tasks = [], fetchedNotifications = []) => {
 const getNotificationTask = (tasks = [], notification = {}) =>
   tasks.find((task) => String(task._id || task.id) === String(notification.issueId));
 
+const filterActiveNotifications = (notifications = [], tasks = []) =>
+  notifications.filter((notification) => {
+    const relatedTask = getNotificationTask(tasks, notification);
+    return !relatedTask || relatedTask.status !== 'completed';
+  });
+
 function Technician({ userName, onLogout }) {
   // Fallback to sessionStorage if userName prop is not available
   const displayName = userName || sessionStorage.getItem('userName');
@@ -127,6 +133,7 @@ function Technician({ userName, onLogout }) {
   const [updateProgress, setUpdateProgress] = useState('in_progress');
   const [filterStatus, setFilterStatus] = useState('assigned');
   const [showNotificationMenu, setShowNotificationMenu] = useState(false);
+  const [showDelayedWarnings, setShowDelayedWarnings] = useState(false);
 
   // Fetch assigned tasks from backend and auto-refresh every 5 seconds (reduced from 3 for performance)
   useEffect(() => {
@@ -149,7 +156,7 @@ function Technician({ userName, onLogout }) {
 
         if (process.env.REACT_APP_DEBUG === 'true') console.debug('???? Technician tasks loaded:', assignedTasks.length);
         setTasks(assignedTasks);
-        setNotifications(mergeNotifications(assignedTasks, activeNotifications));
+        setNotifications(filterActiveNotifications(mergeNotifications(assignedTasks, activeNotifications), assignedTasks));
         setError('');
       } catch (err) {
         console.error('❌ Fetch tasks error:', err.response?.data || err.message);
@@ -268,7 +275,12 @@ function Technician({ userName, onLogout }) {
           : [];
 
         setTasks(refreshedTasks);
-        setNotifications(mergeNotifications(refreshedTasks, refreshedNotifications));
+        setNotifications(
+          filterActiveNotifications(
+            mergeNotifications(refreshedTasks, refreshedNotifications),
+            refreshedTasks
+          )
+        );
       }
 
 
@@ -341,6 +353,16 @@ function Technician({ userName, onLogout }) {
 };
 
   const delayedTasks = tasks.filter((task) => getTaskWarningDetails(task).isDelayed);
+  const taskDisplayIdMap = [...tasks]
+    .sort((left, right) => {
+      const leftTime = left?.timestamps?.submitted ? new Date(left.timestamps.submitted).getTime() : 0;
+      const rightTime = right?.timestamps?.submitted ? new Date(right.timestamps.submitted).getTime() : 0;
+      return leftTime - rightTime;
+    })
+    .reduce((acc, task, index) => {
+      acc[task._id || task.id] = `IS${index + 1}`;
+      return acc;
+    }, {});
 
 
   return (
@@ -418,9 +440,62 @@ function Technician({ userName, onLogout }) {
         <div className="technician-content">
           {loading && <div className="loading-message" style={{ padding: '20px' }}>Loading tasks...</div>}
           {delayedTasks.length > 0 && (
-            <div className="technician-warning-alert">
-              <strong>⚠ Warning:</strong> {delayedTasks.length} task{delayedTasks.length > 1 ? 's are' : ' is'} delayed for more than {WARNING_THRESHOLD_HOURS} hours.
-            </div>
+            <>
+              <button
+                type="button"
+                className={`technician-warning-alert ${showDelayedWarnings ? 'expanded' : ''}`}
+                onClick={() => setShowDelayedWarnings((current) => !current)}
+              >
+                <span>
+                  <strong>⚠ Manager warning:</strong> {delayedTasks.length} delayed issue{delayedTasks.length > 1 ? 's' : ''} need attention.
+                </span>
+                <span className="technician-warning-toggle">
+                  {showDelayedWarnings ? 'Hide' : 'View'}
+                </span>
+              </button>
+              {showDelayedWarnings && (
+                <div className="technician-delayed-panel">
+                  <div className="technician-delayed-panel-header">
+                    <h3>Delayed Issues Warning</h3>
+                    <p>Issues that have stayed in a warning state for more than {WARNING_THRESHOLD_HOURS} hours.</p>
+                  </div>
+                  <div className="technician-delayed-list">
+                    {delayedTasks.map((task) => {
+                      const warning = getTaskWarningDetails(task);
+                      const issueLabel = taskDisplayIdMap[task._id || task.id] || 'IS-';
+                      const issueSummary = task.relevantSpecificIssues?.[0] || task.condition || 'Issue details unavailable';
+
+                      return (
+                        <button
+                          key={task._id || task.id}
+                          type="button"
+                          className="technician-delayed-card"
+                          onClick={() => {
+                            setSelectedTask(task);
+                            setShowDetails(true);
+                            setUpdateNotes('');
+                            setUpdateProgress(task.status || 'in_progress');
+                          }}
+                        >
+                          <div className="technician-delayed-content">
+                            <strong>Issue ID: {issueLabel}</strong>
+                            <p>{issueSummary}</p>
+                          </div>
+                          <div className="technician-delayed-meta">
+                            <span className={`warning-note ${warning.status}`}>
+                              {warning.message}
+                            </span>
+                            <span className="technician-delayed-hours">
+                              Open for {Math.floor(warning.hoursOpen)} hour{Math.floor(warning.hoursOpen) === 1 ? '' : 's'}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
           )}
           <div className="dashboard-stats">
             <div className="stat-card">

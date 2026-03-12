@@ -372,20 +372,25 @@ function Manager({ userName, onLogout }) {
     // Use weekly issues if available, otherwise use all issues for display
     const dataSourceIssues = weeklyIssues.length > 0 ? weeklyIssues : issues;
 
-    // Count by technician/issue type (from weekly issues only)
-    const countsByType = dataSourceIssues.reduce((acc, it) => {
-      const key = it.technicianType || it.issueType || 'Others';
-      acc[key] = (acc[key] || 0) + 1;
+    const countsByType = dataSourceIssues.reduce((acc, issue) => {
+      const technicianTypes = deriveRecommendedTechnicianTypes(issue);
+      const effectiveTypes = technicianTypes.length > 0
+        ? technicianTypes
+        : [issue.technicianType || issue.issueType || 'Others'];
+
+      effectiveTypes.forEach((type) => {
+        acc[type] = (acc[type] || 0) + 1;
+      });
+
       return acc;
     }, {});
 
-    // Calculate weekly totals by technician type
-    const electricalCount = dataSourceIssues.filter(i => i.technicianType === 'electrical').length;
-    const itSystemCount = dataSourceIssues.filter(i => i.technicianType === 'it_system').length;
-    const maintenanceCount = dataSourceIssues.filter(i => i.technicianType === 'maintenance').length;
-    const safetyCount = dataSourceIssues.filter(i => i.technicianType === 'safety').length;
-    const generalSupportCount = dataSourceIssues.filter(i => i.technicianType === 'general_support').length;
-    const weeklyTotalCount = electricalCount + itSystemCount + maintenanceCount + safetyCount + generalSupportCount;
+    const electricalCount = countsByType.electrical || 0;
+    const itSystemCount = countsByType.it_system || 0;
+    const maintenanceCount = countsByType.maintenance || 0;
+    const safetyCount = countsByType.safety || 0;
+    const generalSupportCount = countsByType.general_support || 0;
+    const weeklyTotalCount = dataSourceIssues.length;
 
     setAnalyticsData({
       submitted,

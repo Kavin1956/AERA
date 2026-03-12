@@ -55,6 +55,95 @@
   padding: 1rem 1.25rem;
   border-radius: 8px;
   font-weight: 600;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.technician-warning-alert:hover,
+.technician-warning-alert.expanded {
+  background: #fdf0c4;
+  border-color: #d99a16;
+}
+
+.technician-warning-toggle {
+  flex-shrink: 0;
+  color: #9a6700;
+  font-size: 0.9rem;
+}
+
+.technician-delayed-panel {
+  background: #fffaf0;
+  border: 1px solid #f0c36d;
+  border-radius: 18px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 24px rgba(240, 180, 41, 0.08);
+}
+
+.technician-delayed-panel-header h3 {
+  margin: 0;
+  color: #9a6700;
+  font-size: 1.9rem;
+}
+
+.technician-delayed-panel-header p {
+  margin: 0.75rem 0 0;
+  color: #b17300;
+  font-size: 1rem;
+}
+
+.technician-delayed-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.technician-delayed-card {
+  border: 1px solid #f0c36d;
+  background: #fff;
+  border-radius: 18px;
+  padding: 1.3rem 1.25rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.technician-delayed-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+}
+
+.technician-delayed-content strong {
+  display: block;
+  color: #2c2c2c;
+  font-size: 1.05rem;
+}
+
+.technician-delayed-content p {
+  margin: 0.85rem 0 0;
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+.technician-delayed-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.8rem;
+}
+
+.technician-delayed-hours {
+  color: #6b7280;
+  font-size: 0.95rem;
 }
 
 .technician-notification-anchor {
@@ -232,6 +321,17 @@
 
   .technician-notification-dropdown {
     width: min(360px, calc(100vw - 3rem));
+  }
+
+  .technician-warning-alert,
+  .technician-delayed-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .technician-delayed-meta {
+    width: 100%;
+    align-items: flex-start;
   }
 }
 
