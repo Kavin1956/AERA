@@ -393,7 +393,17 @@ function Technician({ userName, onLogout }) {
                 <div className="technician-notification-dropdown">
                   <div className="technician-notifications-header">
                     <h3>Manager Notifications</h3>
-                    <span>{notifications.length}</span>
+                    <div className="technician-notification-header-actions">
+                      <span>{notifications.length}</span>
+                      <button
+                        type="button"
+                        className="technician-notification-close-btn"
+                        onClick={() => setShowNotificationMenu(false)}
+                        aria-label="Close notifications"
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
                   {notifications.length === 0 ? (
                     <p className="technician-notification-empty">No notifications right now.</p>
@@ -440,62 +450,18 @@ function Technician({ userName, onLogout }) {
         <div className="technician-content">
           {loading && <div className="loading-message" style={{ padding: '20px' }}>Loading tasks...</div>}
           {delayedTasks.length > 0 && (
-            <>
               <button
                 type="button"
                 className={`technician-warning-alert ${showDelayedWarnings ? 'expanded' : ''}`}
-                onClick={() => setShowDelayedWarnings((current) => !current)}
+                onClick={() => setShowDelayedWarnings(true)}
               >
                 <span>
                   <strong>⚠ Manager warning:</strong> {delayedTasks.length} delayed issue{delayedTasks.length > 1 ? 's' : ''} need attention.
                 </span>
                 <span className="technician-warning-toggle">
-                  {showDelayedWarnings ? 'Hide' : 'View'}
+                  View
                 </span>
               </button>
-              {showDelayedWarnings && (
-                <div className="technician-delayed-panel">
-                  <div className="technician-delayed-panel-header">
-                    <h3>Delayed Issues Warning</h3>
-                    <p>Issues that have stayed in a warning state for more than {WARNING_THRESHOLD_HOURS} hours.</p>
-                  </div>
-                  <div className="technician-delayed-list">
-                    {delayedTasks.map((task) => {
-                      const warning = getTaskWarningDetails(task);
-                      const issueLabel = taskDisplayIdMap[task._id || task.id] || 'IS-';
-                      const issueSummary = task.relevantSpecificIssues?.[0] || task.condition || 'Issue details unavailable';
-
-                      return (
-                        <button
-                          key={task._id || task.id}
-                          type="button"
-                          className="technician-delayed-card"
-                          onClick={() => {
-                            setSelectedTask(task);
-                            setShowDetails(true);
-                            setUpdateNotes('');
-                            setUpdateProgress(task.status || 'in_progress');
-                          }}
-                        >
-                          <div className="technician-delayed-content">
-                            <strong>Issue ID: {issueLabel}</strong>
-                            <p>{issueSummary}</p>
-                          </div>
-                          <div className="technician-delayed-meta">
-                            <span className={`warning-note ${warning.status}`}>
-                              {warning.message}
-                            </span>
-                            <span className="technician-delayed-hours">
-                              Open for {Math.floor(warning.hoursOpen)} hour{Math.floor(warning.hoursOpen) === 1 ? '' : 's'}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </>
           )}
           <div className="dashboard-stats">
             <div className="stat-card">
@@ -652,6 +618,64 @@ function Technician({ userName, onLogout }) {
           </div>
         </div>
       </div>
+
+      {showDelayedWarnings && delayedTasks.length > 0 && (
+        <div className="modal-overlay" onClick={() => setShowDelayedWarnings(false)}>
+          <div
+            className="modal-content technician-delayed-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h3>Delayed Issues Warning</h3>
+              <button className="close-btn" onClick={() => setShowDelayedWarnings(false)}>x</button>
+            </div>
+
+            <div className="modal-body">
+              <div className="technician-delayed-panel">
+                <div className="technician-delayed-panel-header">
+                  <h3>Delayed Issues Warning</h3>
+                  <p>Issues that have stayed in a warning state for more than {WARNING_THRESHOLD_HOURS} hours.</p>
+                </div>
+                <div className="technician-delayed-list">
+                  {delayedTasks.map((task) => {
+                    const warning = getTaskWarningDetails(task);
+                    const issueLabel = taskDisplayIdMap[task._id || task.id] || 'IS-';
+                    const issueSummary = task.relevantSpecificIssues?.[0] || task.condition || 'Issue details unavailable';
+
+                    return (
+                      <button
+                        key={task._id || task.id}
+                        type="button"
+                        className="technician-delayed-card"
+                        onClick={() => {
+                          setShowDelayedWarnings(false);
+                          setSelectedTask(task);
+                          setShowDetails(true);
+                          setUpdateNotes('');
+                          setUpdateProgress(task.status || 'in_progress');
+                        }}
+                      >
+                        <div className="technician-delayed-content">
+                          <strong>Issue ID: {issueLabel}</strong>
+                          <p>{issueSummary}</p>
+                        </div>
+                        <div className="technician-delayed-meta">
+                          <span className={`warning-note ${warning.status}`}>
+                            {warning.message}
+                          </span>
+                          <span className="technician-delayed-hours">
+                            Open for {Math.floor(warning.hoursOpen)} hour{Math.floor(warning.hoursOpen) === 1 ? '' : 's'}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Task Details Modal */}
       {showDetails && selectedTask && (

@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar';
 import { issueAPI } from '../services/api';
 
 const WARNING_THRESHOLD_HOURS = 5;
+const ASSIGNMENT_REMINDER_THRESHOLD_HOURS = 3;
 const LOCATION_TYPE_LABELS = {
   classroom: 'Classroom',
   laboratory: 'Laboratory',
@@ -11,6 +12,12 @@ const LOCATION_TYPE_LABELS = {
   seminar_hall: 'Seminar Hall',
   seminar: 'Seminar Hall',
   special_lab: 'Special Lab'
+};
+const ISSUE_GROUPS = {
+  maintenance: ['whiteboardNeedsCleaning', 'whiteboardDamaged', 'brokenChairs', 'damagedTables'],
+  it_system: ['systemSlowPerformance', 'systemNotWorking', 'projectorNotWorking', 'projectorNotAvailable', 'slowInternet', 'noInternet'],
+  electrical: ['temperatureTooHot', 'temperatureTooCold', 'dustyEnvironment', 'poorVentilation', 'powerSupplyFluctuating', 'powerFailure', 'acNotWorking', 'dimLighting', 'lightingNotWorking', 'fanNotWorking', 'junctionBoxExtraAvailable', 'junctionBoxDamaged'],
+  safety: ['fireEquipmentNotAvailable', 'exitBlocked', 'looseWires', 'damagedSwitches']
 };
 
 const normalizeLocationCategory = (category = '') => {
@@ -74,9 +81,60 @@ const sortIssuesBySubmitted = (issueList = []) => (
   [...issueList].sort((a, b) => {
     const aTime = a?.timestamps?.submitted ? new Date(a.timestamps.submitted).getTime() : 0;
     const bTime = b?.timestamps?.submitted ? new Date(b.timestamps.submitted).getTime() : 0;
+    return bTime - aTime;
+  })
+);
+
+const sortIssuesBySubmittedOldestFirst = (issueList = []) => (
+  [...issueList].sort((a, b) => {
+    const aTime = a?.timestamps?.submitted ? new Date(a.timestamps.submitted).getTime() : 0;
+    const bTime = b?.timestamps?.submitted ? new Date(b.timestamps.submitted).getTime() : 0;
     return aTime - bTime;
   })
 );
+
+const ITEMS_PER_PAGE = 10;
+
+const deriveRecommendedTechnicianTypes = (issue) => {
+  if (!issue) return [];
+
+  if (issue.technicianTypes?.length) {
+    return issue.technicianTypes;
+  }
+
+  const issueCodes = new Set(issue.issues || []);
+  const recommended = new Set();
+
+  Object.entries(ISSUE_GROUPS).forEach(([techType, codes]) => {
+    if (codes.some((code) => issueCodes.has(code))) {
+      recommended.add(techType);
+    }
+  });
+
+  if ((issue.otherSuggestions || issue.data?.otherSuggestions || '').trim()) {
+    recommended.add('general_support');
+  }
+
+  if (recommended.size === 0 && issue.technicianType) {
+    recommended.add(issue.technicianType);
+  }
+
+  return [...recommended];
+};
+
+const getPrimaryTechnicianType = (issue) => {
+  const recommendedTypes = deriveRecommendedTechnicianTypes(issue);
+
+  if (issue?.technicianType) {
+    return issue.technicianType;
+  }
+
+  if (recommendedTypes.length > 0) {
+    return recommendedTypes[0];
+  }
+
+  return issue?.issueType || 'general_support';
+};
 const WARNING_COPY = {
   notSolved: '⚠ Issue not solved yet. Please take action.',
   noResponse: '⚠ No response from technician.'
@@ -104,13 +162,19 @@ function Manager({ userName, onLogout }) {
   const [selectedIssueDisplayId, setSelectedIssueDisplayId] = useState('');
   const [showDetails, setShowDetails] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterTechnicianType, setFilterTechnicianType] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedTechnicianTypes, setSelectedTechnicianTypes] = useState([]);
   const [analysisRisk, setAnalysisRisk] = useState('');
   const [analysisNotes, setAnalysisNotes] = useState('');
   const [activeTab, setActiveTab] = useState('current');
   const [analyticsData, setAnalyticsData] = useState({});
+  const [showDelayedWarnings, setShowDelayedWarnings] = useState(false);
+  const [showManagerNotifications, setShowManagerNotifications] = useState(false);
+  const [currentIssuesPage, setCurrentIssuesPage] = useState(1);
+  const [historyIssuesPage, setHistoryIssuesPage] = useState(1);
   const [previousIssueCount, setPreviousIssueCount] = useState(0); // Track previous count to detect new issues
-  const sortedIssuesBySubmission = sortIssuesBySubmitted(issues);
+  const sortedIssuesBySubmission = sortIssuesBySubmittedOldestFirst(issues);
   const issueDisplayIdMap = sortedIssuesBySubmission.reduce((acc, issue, index) => {
     acc[issue._id] = `IS${index + 1}`;
     return acc;
@@ -234,40 +298,6 @@ function Manager({ userName, onLogout }) {
     return types.map((type) => getTechnicianTypeDisplay(type)).join(', ');
   };
 
-  const deriveRecommendedTechnicianTypes = (issue) => {
-    if (!issue) return [];
-
-    if (issue.technicianTypes?.length) {
-      return issue.technicianTypes;
-    }
-
-    const issueCodes = new Set(issue.issues || []);
-    const recommended = new Set();
-
-    const issueGroups = {
-      maintenance: ['whiteboardNeedsCleaning', 'whiteboardDamaged', 'brokenChairs', 'damagedTables'],
-      it_system: ['systemSlowPerformance', 'systemNotWorking', 'projectorNotWorking', 'projectorNotAvailable', 'slowInternet', 'noInternet'],
-      electrical: ['temperatureTooHot', 'temperatureTooCold', 'dustyEnvironment', 'poorVentilation', 'powerSupplyFluctuating', 'powerFailure', 'acNotWorking', 'dimLighting', 'lightingNotWorking', 'fanNotWorking', 'junctionBoxExtraAvailable', 'junctionBoxDamaged'],
-      safety: ['fireEquipmentNotAvailable', 'exitBlocked', 'looseWires', 'damagedSwitches']
-    };
-
-    Object.entries(issueGroups).forEach(([techType, codes]) => {
-      if (codes.some((code) => issueCodes.has(code))) {
-        recommended.add(techType);
-      }
-    });
-
-    if ((issue.otherSuggestions || issue.data?.otherSuggestions || '').trim()) {
-      recommended.add('general_support');
-    }
-
-    if (recommended.size === 0 && issue.technicianType) {
-      recommended.add(issue.technicianType);
-    }
-
-    return [...recommended];
-  };
-
   const openIssueDetails = (issue, displayId) => {
     setSelectedIssue(issue);
     setSelectedIssueDisplayId(displayId);
@@ -373,15 +403,8 @@ function Manager({ userName, onLogout }) {
     const dataSourceIssues = weeklyIssues.length > 0 ? weeklyIssues : issues;
 
     const countsByType = dataSourceIssues.reduce((acc, issue) => {
-      const technicianTypes = deriveRecommendedTechnicianTypes(issue);
-      const effectiveTypes = technicianTypes.length > 0
-        ? technicianTypes
-        : [issue.technicianType || issue.issueType || 'Others'];
-
-      effectiveTypes.forEach((type) => {
-        acc[type] = (acc[type] || 0) + 1;
-      });
-
+      const primaryType = getPrimaryTechnicianType(issue);
+      acc[primaryType] = (acc[primaryType] || 0) + 1;
       return acc;
     }, {});
 
@@ -530,25 +553,126 @@ function Manager({ userName, onLogout }) {
     }
   };
 
-  const getFilteredIssues = () => {
-    let filtered = issues.filter(i => i.status !== 'completed');
-    
-    if (filterStatus === 'assigned') {
-      filtered = filtered.filter(issue => issue.status === 'assigned');
-    } else if (filterStatus === 'submitted') {
-      filtered = filtered.filter(issue => issue.status === 'submitted');
+  const getAssignmentReminderDetails = (issue) => {
+    if (issue.status !== 'submitted') {
+      return { isDelayed: false, hoursWaiting: 0 };
     }
-    
-    return sortIssuesBySubmitted(filtered);
+
+    const submittedAt = issue.timestamps?.submitted;
+    const hoursWaiting = submittedAt
+      ? (Date.now() - new Date(submittedAt).getTime()) / (1000 * 60 * 60)
+      : 0;
+
+    return {
+      isDelayed: hoursWaiting >= ASSIGNMENT_REMINDER_THRESHOLD_HOURS,
+      hoursWaiting
+    };
+  };
+
+  const applySearchFilter = (issueList = []) => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    if (!normalizedSearch) {
+      return issueList;
+    }
+
+    return issueList.filter((issue) => {
+      const locationText = formatLocationForTable(issue.location, issue.data);
+      const searchFields = [
+        getIssueDisplayId(issue),
+        issue.condition,
+        issue.priority,
+        issue.status,
+        issue.userType,
+        getReporterDetails(issue).name,
+        getReporterDetails(issue).email,
+        getLocationDetails(issue.location, issue.data).categoryLabel,
+        locationText,
+        getTechnicianTypesDisplay(issue),
+        ...(issue.specificIssues || []),
+        issue.otherSuggestions,
+        issue.technicianNotes
+      ];
+
+      return searchFields
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(normalizedSearch));
+    });
+  };
+
+  const getFilteredIssues = () => {
+    let filtered = [...issues];
+
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter((issue) => issue.status === filterStatus);
+    }
+
+    if (filterTechnicianType !== 'all') {
+      filtered = filtered.filter((issue) => {
+        const issueTechnicianTypes = issue?.technicianTypes?.length
+          ? issue.technicianTypes
+          : (issue?.technicianType ? [issue.technicianType] : deriveRecommendedTechnicianTypes(issue));
+
+        return issueTechnicianTypes.includes(filterTechnicianType);
+      });
+    }
+
+    return sortIssuesBySubmitted(applySearchFilter(filtered));
   };
 
   const getCompletedIssues = () => {
-    return sortIssuesBySubmitted(issues.filter(i => i.status === 'completed'));
+    let filtered = issues.filter(i => i.status === 'completed');
+
+    if (filterTechnicianType !== 'all') {
+      filtered = filtered.filter((issue) => {
+        const issueTechnicianTypes = issue?.technicianTypes?.length
+          ? issue.technicianTypes
+          : (issue?.technicianType ? [issue.technicianType] : deriveRecommendedTechnicianTypes(issue));
+
+        return issueTechnicianTypes.includes(filterTechnicianType);
+      });
+    }
+
+    return sortIssuesBySubmitted(applySearchFilter(filtered));
   };
 
+  useEffect(() => {
+    setCurrentIssuesPage(1);
+  }, [filterStatus, filterTechnicianType, searchTerm, issues.length]);
+
+  useEffect(() => {
+    if (activeTab === 'history') {
+      setHistoryIssuesPage(1);
+    }
+  }, [activeTab, searchTerm]);
+
   const delayedIssues = sortIssuesBySubmitted(issues.filter((issue) => getIssueWarningDetails(issue).isDelayed));
+  const managerNotifications = sortIssuesBySubmitted(
+    issues.filter((issue) => getAssignmentReminderDetails(issue).isDelayed)
+  );
   const currentTabIssues = activeTab === 'current' ? getFilteredIssues() : null;
   const completedTabIssues = activeTab === 'history' ? getCompletedIssues() : null;
+  const currentIssuesTotalPages = Math.max(1, Math.ceil((currentTabIssues?.length || 0) / ITEMS_PER_PAGE));
+  const historyIssuesTotalPages = Math.max(1, Math.ceil((completedTabIssues?.length || 0) / ITEMS_PER_PAGE));
+  const paginatedCurrentIssues = currentTabIssues?.slice(
+    (currentIssuesPage - 1) * ITEMS_PER_PAGE,
+    currentIssuesPage * ITEMS_PER_PAGE
+  );
+  const paginatedCompletedIssues = completedTabIssues?.slice(
+    (historyIssuesPage - 1) * ITEMS_PER_PAGE,
+    historyIssuesPage * ITEMS_PER_PAGE
+  );
+
+  useEffect(() => {
+    if (currentIssuesPage > currentIssuesTotalPages) {
+      setCurrentIssuesPage(currentIssuesTotalPages);
+    }
+  }, [currentIssuesPage, currentIssuesTotalPages]);
+
+  useEffect(() => {
+    if (historyIssuesPage > historyIssuesTotalPages) {
+      setHistoryIssuesPage(historyIssuesTotalPages);
+    }
+  }, [historyIssuesPage, historyIssuesTotalPages]);
 
   return (
     <div className="manager-container">
@@ -556,8 +680,80 @@ function Manager({ userName, onLogout }) {
 
       <div className="manager-main">
         <div className="manager-header">
-          <h2>Manager Dashboard</h2>
-          <p>Review, analyze, and assign environmental issues to technicians</p>
+          <div>
+            <h2>Manager Dashboard</h2>
+            <p>Review, analyze, and assign environmental issues to technicians</p>
+          </div>
+          <div className="manager-header-tools">
+            <div className="manager-notification-wrapper">
+              <button
+                type="button"
+                className="manager-notification-btn"
+                onClick={() => setShowManagerNotifications((current) => !current)}
+              >
+                <span className="manager-notification-icon">🔔</span>
+                {managerNotifications.length > 0 && (
+                  <span className="manager-notification-badge">{managerNotifications.length}</span>
+                )}
+              </button>
+
+              {showManagerNotifications && (
+                <div className="manager-notification-panel">
+                  <div className="manager-notification-panel-header">
+                    <h3>Manager Notifications</h3>
+                    <div className="manager-notification-header-actions">
+                      <span className="manager-notification-count">{managerNotifications.length}</span>
+                      <button
+                        type="button"
+                        className="manager-notification-close-btn"
+                        onClick={() => setShowManagerNotifications(false)}
+                        aria-label="Close notifications"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+
+                  {managerNotifications.length === 0 ? (
+                    <p className="manager-notification-empty">No notifications right now.</p>
+                  ) : (
+                    <div className="manager-notification-list">
+                      {managerNotifications.map((issue) => {
+                        const issueDisplayId = getIssueDisplayId(issue);
+                        const reminder = getAssignmentReminderDetails(issue);
+
+                        return (
+                          <div key={issue._id} className="manager-notification-item">
+                            <div className="manager-notification-copy">
+                              <p className="manager-notification-title">
+                                This issue has not been sent to technician for more than 3 hours.
+                              </p>
+                              <p className="manager-notification-meta">
+                                {new Date(issue.timestamps?.submitted).toLocaleString()}
+                              </p>
+                              <p className="manager-notification-meta">
+                                Waiting {Math.floor(reminder.hoursWaiting)} hour{Math.floor(reminder.hoursWaiting) === 1 ? '' : 's'} for assignment
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              className="manager-notification-view-btn"
+                              onClick={() => {
+                                setShowManagerNotifications(false);
+                                openIssueDetails(issue, issueDisplayId);
+                              }}
+                            >
+                              View Details
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="manager-content">
@@ -565,9 +761,13 @@ function Manager({ userName, onLogout }) {
           {error && <div className="error-message">{error}</div>}
           {newIssueAlert && <div className="success-message" style={{ animation: 'slideDown 0.3s ease-in-out' }}>{newIssueAlert}</div>}
           {delayedIssues.length > 0 && (
-            <div className="warning-dashboard-alert">
+            <button
+              type="button"
+              className="warning-dashboard-alert"
+              onClick={() => setShowDelayedWarnings(true)}
+            >
               <strong>⚠ Manager warning:</strong> {delayedIssues.length} delayed issue{delayedIssues.length > 1 ? 's' : ''} need attention.
-            </div>
+            </button>
           )}
           
           <div className="dashboard-stats">
@@ -639,66 +839,49 @@ function Manager({ userName, onLogout }) {
           {/* Current Issues Tab */}
           {activeTab === 'current' && (
             <>
-              {delayedIssues.length > 0 && (
-                <div className="delayed-issues-section">
-                  <div className="delayed-issues-header">
-                    <h3>Delayed Issues Warning</h3>
-                    <p>Issues that have stayed in a warning state for more than {WARNING_THRESHOLD_HOURS} hours.</p>
-                  </div>
-                  <div className="delayed-issues-list">
-                    {delayedIssues.map((issue) => {
-                      const warning = getIssueWarningDetails(issue);
-                      const issueDisplayId = getIssueDisplayId(issue);
-                      const issueSummary = issue.specificIssues?.[0] || issue.condition || 'Issue details unavailable';
-                      return (
-                        <button
-                          key={issue._id}
-                          type="button"
-                          className="delayed-issue-card"
-                          onClick={() => openIssueDetails(issue, issueDisplayId)}
-                        >
-                          <div>
-                            <strong>Issue ID: {issueDisplayId}</strong>
-                            <p>{issueSummary}</p>
-                          </div>
-                          <div>
-                            <span className={`warning-note ${warning.status}`}>
-                              {warning.message}
-                            </span>
-                            <p className="delayed-issue-time">
-                              Open for {Math.floor(warning.hoursOpen)} hour{Math.floor(warning.hoursOpen) === 1 ? '' : 's'}
-                            </p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
               <div className="manager-controls">
                 <div className="filter-section">
-                  <label>Filter by Status:</label>
-                  <div className="filter-buttons">
-                    <button
-                      className={filterStatus === 'all' ? 'active' : ''}
-                      onClick={() => setFilterStatus('all')}
-                    >
-                      All Issues
-                    </button>
-                    <button
-                      className={filterStatus === 'submitted' ? 'active' : ''}
-                      onClick={() => setFilterStatus('submitted')}
-                    >
-                      New Issues
-                    </button>
-                    <button
-                      className={filterStatus === 'assigned' ? 'active' : ''}
-                      onClick={() => setFilterStatus('assigned')}
-                    >
-                      Assigned
-                    </button>
-                  </div>
+                  <label htmlFor="manager-issue-search">Search Issues:</label>
+                  <input
+                    id="manager-issue-search"
+                    type="text"
+                    className="manager-search-input"
+                    placeholder="Search by ID, location, user, issue, or technician"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <div className="filter-section">
+                  <label htmlFor="manager-technician-filter">Technician Type:</label>
+                  <select
+                    id="manager-technician-filter"
+                    className="manager-search-input manager-status-select"
+                    value={filterTechnicianType}
+                    onChange={(e) => setFilterTechnicianType(e.target.value)}
+                  >
+                    <option value="all">All technician types</option>
+                    <option value="electrical">Electrical Technician</option>
+                    <option value="it_system">IT / System Technician</option>
+                    <option value="maintenance">Maintenance Technician</option>
+                    <option value="safety">Safety Technician</option>
+                    <option value="general_support">General Support Technician</option>
+                  </select>
+                </div>
+                <div className="filter-section">
+                  <label htmlFor="manager-status-filter">Status:</label>
+                  <select
+                    id="manager-status-filter"
+                    className="manager-search-input manager-status-select"
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                  >
+                    <option value="all">All statuses</option>
+                    <option value="submitted">New Issues</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
                 </div>
               </div>
 
@@ -723,7 +906,7 @@ function Manager({ userName, onLogout }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {currentTabIssues?.map((issue) => {
+                      {paginatedCurrentIssues?.map((issue) => {
                         const warning = getIssueWarningDetails(issue);
                         return (
                         <tr key={issue._id} className={`issue-row status-${issue.status} ${warning.isDelayed ? 'warning-delayed-row' : ''} ${isNewIssue(issue) ? 'new-issue-highlight' : ''}`}>
@@ -740,7 +923,15 @@ function Manager({ userName, onLogout }) {
                           </td>
                           <td>
                             <span className={`status-badge status-${issue.status}`}>
-                              {issue.status === 'submitted' ? 'New' : issue.status === 'assigned' ? 'In Progress' : issue.status}
+                              {issue.status === 'submitted'
+                                ? 'New'
+                                : issue.status === 'assigned'
+                                  ? 'Assigned'
+                                  : issue.status === 'in_progress'
+                                    ? 'In Progress'
+                                    : issue.status === 'completed'
+                                      ? 'Completed'
+                                      : issue.status}
                             </span>
                             {warning.status && (
                               <div className={`warning-note ${warning.status}`}>
@@ -770,69 +961,207 @@ function Manager({ userName, onLogout }) {
                   </table>
                 )}
               </div>
+              {currentTabIssues && currentTabIssues.length > ITEMS_PER_PAGE && (
+                <div className="table-pagination">
+                  <span className="pagination-summary">
+                    Showing {(currentIssuesPage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(currentIssuesPage * ITEMS_PER_PAGE, currentTabIssues.length)} of {currentTabIssues.length} issues
+                  </span>
+                  <div className="pagination-actions">
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      onClick={() => setCurrentIssuesPage((page) => Math.max(1, page - 1))}
+                      disabled={currentIssuesPage === 1}
+                    >
+                      Previous
+                    </button>
+                    <span className="pagination-page">
+                      Page {currentIssuesPage} of {currentIssuesTotalPages}
+                    </span>
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      onClick={() => setCurrentIssuesPage((page) => Math.min(currentIssuesTotalPages, page + 1))}
+                      disabled={currentIssuesPage === currentIssuesTotalPages}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
           {/* History Tab */}
           {activeTab === 'history' && (
-            <div className="issues-table-container">
-              {completedTabIssues?.length === 0 ? (
-                <div className="empty-state">
-                  <p>No completed issues yet</p>
+            <>
+              <div className="manager-controls">
+                <div className="filter-section">
+                  <label htmlFor="manager-history-search">Search Issues:</label>
+                  <input
+                    id="manager-history-search"
+                    type="text"
+                    className="manager-search-input"
+                    placeholder="Search completed issues"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
                 </div>
-              ) : (
-                <table className="issues-table">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Location</th>
-                      <th>User</th>
-                      <th>Type</th>
-                      <th>Priority</th>
-                      <th>Status</th>
-                      <th>Submitted</th>
-                      <th>Completed</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {completedTabIssues?.map((issue) => (
-                      <tr key={issue._id} className="issue-row status-completed">
-                        <td>{getIssueDisplayId(issue)}</td>
-                        <td>
-                          {formatLocationForTable(issue.location, issue.data) || '-'}
-                        </td>
-                        <td>{issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector'}</td>
-                        <td>{getLocationDetails(issue.location, issue.data).categoryLabel || 'N/A'}</td>
-                        <td>
-                          {issue.priority ? issue.priority.toLowerCase() : ''}
-                        </td>
-                        <td>
-                          <span className={`status-badge status-completed`}>
-                            Completed
-                          </span>
-                        </td>
-                        <td>{new Date(issue.timestamps?.submitted).toLocaleString()}</td>
-                        <td>{new Date(issue.timestamps?.completed).toLocaleString()}</td>
-                        <td>
-                          <button
-                            className="view-btn"
-                            onClick={() => {
-                              openIssueDetails(issue, getIssueDisplayId(issue));
-                            }}
-                          >
-                            View
-                          </button>
-                        </td>
+                <div className="filter-section">
+                  <label htmlFor="manager-history-technician-filter">Technician Type:</label>
+                  <select
+                    id="manager-history-technician-filter"
+                    className="manager-search-input manager-status-select"
+                    value={filterTechnicianType}
+                    onChange={(e) => setFilterTechnicianType(e.target.value)}
+                  >
+                    <option value="all">All technician types</option>
+                    <option value="electrical">Electrical Technician</option>
+                    <option value="it_system">IT / System Technician</option>
+                    <option value="maintenance">Maintenance Technician</option>
+                    <option value="safety">Safety Technician</option>
+                    <option value="general_support">General Support Technician</option>
+                  </select>
+                </div>
+              </div>
+              <div className="issues-table-container">
+                {completedTabIssues?.length === 0 ? (
+                  <div className="empty-state">
+                    <p>No completed issues yet</p>
+                  </div>
+                ) : (
+                  <table className="issues-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Location</th>
+                        <th>User</th>
+                        <th>Type</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                        <th>Completed</th>
+                        <th>Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {paginatedCompletedIssues?.map((issue) => (
+                        <tr key={issue._id} className="issue-row status-completed">
+                          <td>{getIssueDisplayId(issue)}</td>
+                          <td>
+                            {formatLocationForTable(issue.location, issue.data) || '-'}
+                          </td>
+                          <td>{issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector'}</td>
+                          <td>{getLocationDetails(issue.location, issue.data).categoryLabel || 'N/A'}</td>
+                          <td>
+                            {issue.priority ? issue.priority.toLowerCase() : ''}
+                          </td>
+                          <td>
+                            <span className={`status-badge status-completed`}>
+                              Completed
+                            </span>
+                          </td>
+                          <td>{new Date(issue.timestamps?.submitted).toLocaleString()}</td>
+                          <td>{new Date(issue.timestamps?.completed).toLocaleString()}</td>
+                          <td>
+                            <button
+                              className="view-btn"
+                              onClick={() => {
+                                openIssueDetails(issue, getIssueDisplayId(issue));
+                              }}
+                            >
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              {completedTabIssues && completedTabIssues.length > ITEMS_PER_PAGE && (
+                <div className="table-pagination">
+                  <span className="pagination-summary">
+                    Showing {(historyIssuesPage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(historyIssuesPage * ITEMS_PER_PAGE, completedTabIssues.length)} of {completedTabIssues.length} issues
+                  </span>
+                  <div className="pagination-actions">
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      onClick={() => setHistoryIssuesPage((page) => Math.max(1, page - 1))}
+                      disabled={historyIssuesPage === 1}
+                    >
+                      Previous
+                    </button>
+                    <span className="pagination-page">
+                      Page {historyIssuesPage} of {historyIssuesTotalPages}
+                    </span>
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      onClick={() => setHistoryIssuesPage((page) => Math.min(historyIssuesTotalPages, page + 1))}
+                      disabled={historyIssuesPage === historyIssuesTotalPages}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
               )}
-            </div>
+            </>
           )}
         </div>
       </div>
+
+      {showDelayedWarnings && delayedIssues.length > 0 && (
+        <div className="modal-overlay" onClick={() => setShowDelayedWarnings(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Delayed Issues Warning</h3>
+              <button className="close-btn" onClick={() => setShowDelayedWarnings(false)}>x</button>
+            </div>
+
+            <div className="modal-body">
+              <div className="delayed-issues-section">
+                <div className="delayed-issues-header">
+                  <h3>Delayed Issues Warning</h3>
+                  <p>Issues that have stayed in a warning state for more than {WARNING_THRESHOLD_HOURS} hours.</p>
+                </div>
+                <div className="delayed-issues-list">
+                  {delayedIssues.map((issue) => {
+                    const warning = getIssueWarningDetails(issue);
+                    const issueDisplayId = getIssueDisplayId(issue);
+                    const issueSummary = issue.specificIssues?.[0] || issue.condition || 'Issue details unavailable';
+                    return (
+                      <button
+                        key={issue._id}
+                        type="button"
+                        className="delayed-issue-card"
+                        onClick={() => {
+                          setShowDelayedWarnings(false);
+                          openIssueDetails(issue, issueDisplayId);
+                        }}
+                      >
+                        <div>
+                          <strong>Issue ID: {issueDisplayId}</strong>
+                          <p>{issueSummary}</p>
+                        </div>
+                        <div>
+                          <span className={`warning-note ${warning.status}`}>
+                            {warning.message}
+                          </span>
+                          <p className="delayed-issue-time">
+                            Open for {Math.floor(warning.hoursOpen)} hour{Math.floor(warning.hoursOpen) === 1 ? '' : 's'}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Issue Details Modal */}
       {showDetails && selectedIssue && (
