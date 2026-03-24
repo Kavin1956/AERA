@@ -4,12 +4,14 @@ const router = express.Router();
 const auth = require('../middleware/authMiddleware');
 const role = require('../middleware/roleMiddleware');
 const issueController = require('../controllers/issueController');
+const { uploadIssueImage } = require('../middleware/uploadMiddleware');
 
 // Create issue (Data Collector or Manager)
 router.post(
   '/',
   auth,
   role(['data_collector', 'manager']),
+  uploadIssueImage.single('image'),
   issueController.createIssue
 );
 

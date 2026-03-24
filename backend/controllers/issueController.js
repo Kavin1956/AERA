@@ -1,6 +1,9 @@
+const fs = require('fs');
+const path = require('path');
 const Issue = require('../models/issue');
 const User = require('../models/User');
 const Notification = require('../models/notification');
+const { normalizeIssueDocument, normalizeIssueObject } = require('../utils/issueNormalizer');
 
 const normalizeTechnicianTypes = (technicianTypes = [], technicianType) => {
   const rawTypes = Array.isArray(technicianTypes) ? technicianTypes : [];
@@ -107,6 +110,56 @@ const resolveWarningRecipients = async (issue) => {
   return [...new Set([...directTechnicianIds, ...fallbackTechnicianIds])];
 };
 
+const parseIssuePayload = (req) => {
+  if (!req.body?.payload) {
+    return req.body || {};
+  }
+
+  return JSON.parse(req.body.payload);
+};
+
+const buildImageDetails = (req) => {
+  if (!req.file) {
+    return null;
+  }
+
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const relativePath = path.posix.join('uploads', 'issues', req.file.filename);
+
+  return {
+    originalName: req.file.originalname,
+    fileName: req.file.filename,
+    mimeType: req.file.mimetype,
+    size: req.file.size,
+    path: relativePath,
+    url: `${protocol}://${req.get('host')}/${relativePath}`
+  };
+};
+
+const deleteStoredIssueImage = async (issue) => {
+  const imagePath = issue?.image?.path;
+
+  if (!imagePath) {
+    return;
+  }
+
+  const normalizedRelativePath = imagePath.replace(/^\/+/, '').replace(/\//g, path.sep);
+  const absolutePath = path.join(__dirname, '..', normalizedRelativePath);
+
+  try {
+    await fs.promises.unlink(absolutePath);
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      console.warn('Failed to delete issue image:', absolutePath, error.message);
+    }
+  }
+};
+
+const getRequestBaseUrl = (req) => {
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  return `${protocol}://${req.get('host')}`;
+};
+
 exports.createIssue = async (req, res) => {
   try {
     if (process.env.DEBUG_ISSUE === 'true') {
@@ -116,6 +169,7 @@ exports.createIssue = async (req, res) => {
       console.debug('Issue Data:', req.body);
     }
 
+    const requestBody = parseIssuePayload(req);
     const authenticatedUser = req.user?.email
       ? req.user
       : await User.findById(req.user.id).select('fullName email username userType');
@@ -124,13 +178,20 @@ exports.createIssue = async (req, res) => {
       return res.status(401).json({ message: 'Authenticated user not found' });
     }
 
+    const normalizedRequestBody = normalizeIssueObject(requestBody);
     const issuePayload = {
-      ...req.body,
+      ...normalizedRequestBody,
       submittedBy: req.user.id,
-      userType: authenticatedUser.userType || req.body.userType || 'data_collector',
+      userType: authenticatedUser.userType || normalizedRequestBody.userType || 'data_collector',
       reporterName: authenticatedUser.fullName || authenticatedUser.username || 'Unknown User',
       reporterEmail: authenticatedUser.email || ''
     };
+
+    const imageDetails = buildImageDetails(req);
+
+    if (imageDetails) {
+      issuePayload.image = imageDetails;
+    }
 
     delete issuePayload.reporter;
 
@@ -148,7 +209,7 @@ exports.createIssue = async (req, res) => {
 
     // Keep a single informative server log for successful creates
     console.info('✅ Issue created:', issue._id);
-    res.status(201).json(issue);
+    res.status(201).json(normalizeIssueDocument(issue, getRequestBaseUrl(req)));
   } catch (error) {
     console.error('❌ Create issue error:', error);
     res.status(500).json({ 
@@ -212,7 +273,7 @@ exports.getAllIssues = async (req, res) => {
       });
     }
     
-    res.json(issues);
+    res.json(issues.map((issue) => normalizeIssueDocument(issue, getRequestBaseUrl(req))));
   } catch (error) {
     console.error('❌ Get issues error:', error);
     res.status(500).json({ message: 'Error fetching issues' });
@@ -328,7 +389,7 @@ exports.assignIssue = async (req, res) => {
     }
 
     console.log(`   ✅ Issue assigned: ${issue._id} -> ${technicianTypes.join(', ')}`);
-    res.json(issue);
+    res.json(normalizeIssueDocument(issue, getRequestBaseUrl(req)));
   } catch (error) {
     console.error('❌ Assign issue error:', error);
     res.status(500).json({ message: 'Error assigning issue', error: error.message });
@@ -417,7 +478,7 @@ exports.completeIssue = async (req, res) => {
       .populate('technicianAssignments.technicianId', 'username fullName technicianType');
 
     console.info('Issue completed:', issue._id);
-    res.json(populatedIssue);
+    res.json(normalizeIssueDocument(populatedIssue, getRequestBaseUrl(req)));
   } catch (error) {
     console.error('Complete issue error:', error);
     res.status(500).json({ 
@@ -506,7 +567,7 @@ exports.updateIssueStatus = async (req, res) => {
       console.debug('🔁 Issue status updated and history saved for:', issue._id);
     }
 
-    res.json(issue);
+    res.json(normalizeIssueDocument(issue, getRequestBaseUrl(req)));
   } catch (error) {
     console.error('Update issue status error:', error);
     res.status(500).json({ message: 'Error updating issue status' });
@@ -541,6 +602,8 @@ exports.deleteIssue = async (req, res) => {
         details: 'Data collectors can only delete their own submitted issues'
       });
     }
+
+    await deleteStoredIssueImage(issue);
 
     // Delete the issue
     await Issue.findByIdAndDelete(issueId);

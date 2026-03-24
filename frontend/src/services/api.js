@@ -4,7 +4,7 @@ const isLocalFrontend =
   typeof window !== 'undefined' &&
   ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
-const API_BASE_URL =
+export const API_BASE_URL =
   process.env.REACT_APP_API_URL ||
   (isLocalFrontend ? 'http://localhost:5000/api' : 'https://aera-4y8m.onrender.com/api');
 
@@ -77,7 +77,11 @@ export const authAPI = {
 // };
 
 export const issueAPI = {
-  createIssue: (issueData) => api.post('/issues', issueData),
+  createIssue: (issueData) => api.post('/issues', issueData, issueData instanceof FormData ? {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  } : undefined),
 
   getAllIssues: () => api.get('/issues'),
 

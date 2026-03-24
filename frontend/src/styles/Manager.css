@@ -1687,3 +1687,28 @@
     opacity: 0.8;
   }
 }
+.issue-image-section {
+  margin: 0.75rem 0 1rem;
+}
+
+.issue-image-preview {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  border-radius: 12px;
+  border: 1px solid #d6deeb;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  object-fit: cover;
+}
+
+.issue-image-link {
+  display: inline-block;
+  margin-top: 0.6rem;
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.issue-image-link:hover {
+  text-decoration: underline;
+}

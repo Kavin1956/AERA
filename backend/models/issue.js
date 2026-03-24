@@ -27,6 +27,15 @@ const issueSchema = new mongoose.Schema({
     dept: String
   },
 
+  image: {
+    originalName: String,
+    fileName: String,
+    mimeType: String,
+    size: Number,
+    path: String,
+    url: String
+  },
+
   condition: String,
   problemLevel: String,
   priority: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Medium' },

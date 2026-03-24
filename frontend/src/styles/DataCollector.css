@@ -176,6 +176,62 @@
   min-height: 120px;
 }
 
+.image-input-hidden {
+  display: none;
+}
+
+.image-upload-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.upload-helper-text {
+  color: #5f6c7b;
+  font-size: 0.9rem;
+  margin: 0 0 1rem 0;
+}
+
+.issue-image-section {
+  margin-top: 0.75rem;
+}
+
+.issue-image-preview {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  border-radius: 10px;
+  border: 1px solid #d6deeb;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+  object-fit: cover;
+}
+
+.issue-image-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+  color: #2c3e50;
+  font-size: 0.9rem;
+}
+
+.remove-image-button {
+  border: none;
+  background: #fee2e2;
+  color: #b91c1c;
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.remove-image-button:hover {
+  background: #fecaca;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

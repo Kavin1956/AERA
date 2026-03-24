@@ -1,5 +1,6 @@
 const Issue = require('../models/issue');
 const Notification = require('../models/notification');
+const { normalizeIssueDocument } = require('../utils/issueNormalizer');
 
 const TECHNICIAN_ISSUE_CODES = {
   maintenance: ['whiteboardNeedsCleaning', 'whiteboardDamaged', 'brokenChairs', 'damagedTables'],
@@ -141,6 +142,11 @@ const decorateTaskForTechnician = (task, assignment) => {
   };
 };
 
+const getRequestBaseUrl = (req) => {
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  return `${protocol}://${req.get('host')}`;
+};
+
 // Get tasks assigned to the logged-in technician (either assigned to them
 // explicitly or matching their technicianType with appropriate statuses)
 exports.getAssignedTasks = async (req, res) => {
@@ -198,7 +204,7 @@ exports.getAssignedTasks = async (req, res) => {
           taskTechnicianTypes.includes(technicianType);
       });
 
-    res.json(decoratedTasks);
+    res.json(decoratedTasks.map((task) => normalizeIssueDocument(task, getRequestBaseUrl(req))));
   } catch (error) {
     console.error('❌ getAssignedTasks error:', error);
     res.status(500).json({ message: error.message });
@@ -318,9 +324,12 @@ exports.updateTaskStatus = async (req, res) => {
       .populate('technicianAssignments.technicianId', 'username fullName technicianType');
 
     res.json(
-      decorateTaskForTechnician(
-        populatedIssue,
-        getAssignmentForTechnician(populatedIssue, userId, technicianType)
+      normalizeIssueDocument(
+        decorateTaskForTechnician(
+          populatedIssue,
+          getAssignmentForTechnician(populatedIssue, userId, technicianType)
+        ),
+        getRequestBaseUrl(req)
       )
     );
   } catch (error) {

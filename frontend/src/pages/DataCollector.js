@@ -15,10 +15,18 @@
 // }
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import '../styles/DataCollector.css';
 import Navbar from '../components/Navbar';
 import { issueAPI } from '../services/api';
+import {
+  formatUserTypeLabel,
+  getIssueImageUrl,
+  getResolvedIssueCondition,
+  getResolvedIssueLocation,
+  getResolvedIssueSpecificIssues,
+  getResolvedIssueUserType
+} from '../utils/issueDisplay';
 
 const TECHNICIAN_TYPE_LABELS = {
   maintenance: 'Maintenance',
@@ -107,13 +115,6 @@ const formatAssignmentStatus = (status) => {
   }
 };
 
-const formatUserType = (userType = '') => {
-  if (userType === 'student') return 'Student';
-  if (userType === 'faculty') return 'Faculty';
-  if (userType === 'data_collector') return 'Data Collector';
-  return userType || 'Unknown';
-};
-
 const parseTokenPayload = (token) => {
   if (!token) return null;
 
@@ -178,12 +179,16 @@ const sortIssuesByLatest = (issueList = []) => (
 function DataCollector({ userName, onLogout }) {
   // Fallback to sessionStorage if userName prop is not available
   const displayName = userName || sessionStorage.getItem('userName');
+  const cameraInputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [locationCategory, setLocationCategory] = useState('');
   const [formData, setFormData] = useState({});
   const [issues, setIssues] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState('');
 
   // Fetch submitted issues from backend
   useEffect(() => {
@@ -204,6 +209,12 @@ function DataCollector({ userName, onLogout }) {
 
     fetchIssues();
   }, []);
+
+  useEffect(() => () => {
+    if (imagePreviewUrl && imagePreviewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreviewUrl);
+    }
+  }, [imagePreviewUrl]);
 
   // Delete issue handler
   const handleDeleteIssue = async (issueId) => {
@@ -294,6 +305,51 @@ function DataCollector({ userName, onLogout }) {
     if (currentStep === 1 && validateLocationStep()) {
       setCurrentStep(2);
     }
+  };
+
+  const clearSelectedImage = () => {
+    if (imagePreviewUrl && imagePreviewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreviewUrl);
+    }
+
+    setSelectedImage(null);
+    setImagePreviewUrl('');
+
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleImageSelection = (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file.');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Please choose an image smaller than 5 MB.');
+      event.target.value = '';
+      return;
+    }
+
+    if (imagePreviewUrl && imagePreviewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreviewUrl);
+    }
+
+    setSelectedImage(file);
+    setImagePreviewUrl(URL.createObjectURL(file));
+    setError('');
   };
 
   const handlePrevStep = () => {
@@ -523,6 +579,7 @@ function DataCollector({ userName, onLogout }) {
         specificIssues: reportedIssues, // Array of specific issues found
         issues: getIssueCodes(), // Array of issue codes (e.g., ["slowInternet", "projectorNotWorking"])
         data: {
+          ...formData,
           block: formData.block,
           floor: formData.floor,
           roomNumber: formData.roomNumber,
@@ -543,8 +600,15 @@ function DataCollector({ userName, onLogout }) {
         }
       };
 
+      const multipartData = new FormData();
+      multipartData.append('payload', JSON.stringify(issueData));
+
+      if (selectedImage) {
+        multipartData.append('image', selectedImage);
+      }
+
       // Send to backend API
-      const response = await issueAPI.createIssue(issueData);
+      const response = await issueAPI.createIssue(multipartData);
       console.log('✅ Issue submitted successfully:', response.data);
       
       // Immediately show the newly created issue in the UI for the submitter
@@ -567,6 +631,7 @@ function DataCollector({ userName, onLogout }) {
 
       // Reset form
       setFormData({});
+      clearSelectedImage();
       setLocationCategory('');
       setCurrentStep(1);
       setError('');
@@ -1070,6 +1135,52 @@ function DataCollector({ userName, onLogout }) {
                       ></textarea>
                     </div>
                   </div>
+
+                  <div className="form-section">
+                    <h3 className="section-title">8. Issue Image (Optional)</h3>
+                    <p className="upload-helper-text">
+                      Add a photo if it helps explain the issue. You can capture one with your camera or choose one from the file browser.
+                    </p>
+
+                    <div className="image-upload-actions">
+                      <button type="button" className="btn-secondary" onClick={() => cameraInputRef.current?.click()}>
+                        Capture Photo
+                      </button>
+                      <button type="button" className="btn-secondary" onClick={() => fileInputRef.current?.click()}>
+                        Choose From Files
+                      </button>
+                    </div>
+
+                    <input
+                      ref={cameraInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="image-input-hidden"
+                      onChange={handleImageSelection}
+                    />
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="image-input-hidden"
+                      onChange={handleImageSelection}
+                    />
+
+                    {imagePreviewUrl ? (
+                      <div className="issue-image-section">
+                        <img src={imagePreviewUrl} alt="Issue preview" className="issue-image-preview" />
+                        <div className="issue-image-meta">
+                          <span>{selectedImage?.name || 'Selected image'}</span>
+                          <button type="button" className="remove-image-button" onClick={clearSelectedImage}>
+                            Remove Image
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="upload-helper-text">No image selected.</p>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1110,8 +1221,16 @@ function DataCollector({ userName, onLogout }) {
               <div className="issues-list">
                 {sortIssuesByLatest(issues).map((issue) => (
                   <div key={issue._id} className="issue-card">
+                    {(() => {
+                      const resolvedLocation = getResolvedIssueLocation(issue);
+                      const locationDetails = getLocationDetails(resolvedLocation, issue.data || {});
+                      const resolvedCondition = getResolvedIssueCondition(issue);
+                      const resolvedSpecificIssues = getResolvedIssueSpecificIssues(issue);
+
+                      return (
+                        <>
                     <div className="issue-header">
-                      <span className="issue-type">{formatUserType(issue.userType)}</span>
+                      <span className="issue-type">{formatUserTypeLabel(getResolvedIssueUserType(issue))}</span>
                       <span className="issue-status">{getDisplayStatus(issue)}</span>
                       <button 
                         className="delete-btn"
@@ -1126,22 +1245,25 @@ function DataCollector({ userName, onLogout }) {
                     </p>
                     <p className="issue-info">
                       <strong>Location:</strong> {[
-                        issue.location?.block ? `${issue.location.block} Block` : '',
-                        issue.location?.floor || '',
-                        (() => {
-                          const locationDetails = getLocationDetails(issue.location, issue.data);
-                          return locationDetails.detailValue
-                            ? `${locationDetails.detailLabel}: ${locationDetails.detailValue}`
-                            : '';
-                        })()
+                        resolvedLocation.block ? `${resolvedLocation.block} Block` : '',
+                        resolvedLocation.floor || '',
+                        locationDetails.detailValue
+                          ? `${locationDetails.detailLabel}: ${locationDetails.detailValue}`
+                          : ''
                       ].filter(Boolean).join(', ') || 'N/A'}
                     </p>
                     <p className="issue-info">
-                      <strong>Condition:</strong> {issue.condition}
+                      <strong>Condition:</strong> {resolvedCondition || 'Not assessed'}
                     </p>
                     <p className="issue-info">
                       <strong>Priority:</strong> <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>P{issue.priority}</span>
                     </p>
+                    {getIssueImageUrl(issue) && (
+                      <div className="issue-image-section">
+                        <p className="issue-info"><strong>Uploaded Image:</strong></p>
+                        <img src={getIssueImageUrl(issue)} alt="Reported issue" className="issue-image-preview" />
+                      </div>
+                    )}
                     {issue.technicianAssignments?.length > 0 && (
                       <div className="issue-info">
                         <strong>Technician Progress:</strong>
@@ -1160,9 +1282,9 @@ function DataCollector({ userName, onLogout }) {
                     <p className="issue-info">
                       <strong>Specific Issues Found:</strong>
                     </p>
-                    {issue.specificIssues && issue.specificIssues.length > 0 ? (
+                    {resolvedSpecificIssues.length > 0 ? (
                       <div style={{ marginLeft: '10px', fontSize: '0.9rem' }}>
-                        {issue.specificIssues.map((problem, idx) => (
+                        {resolvedSpecificIssues.map((problem, idx) => (
                           <div key={idx} style={{ color: '#e74c3c', marginBottom: '0.3rem' }}>
                             • {problem}
                           </div>
@@ -1230,6 +1352,9 @@ function DataCollector({ userName, onLogout }) {
                     ) : (
                       <p style={{ marginLeft: '10px', fontSize: '0.85rem', color: '#7f8c8d' }}>No issues recorded</p>
                     )}
+                        </>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import '../styles/Login.css';
 import { authAPI } from '../services/api';
+import AuthWavesBackground from '../components/AuthWavesBackground';
 
 const resolveStoredUserType = (userRole, userType) => {
   if (userType) return userType;
@@ -81,6 +82,7 @@ function Login({ onLogin }) {
 
   return (
     <div className="login-container">
+      <AuthWavesBackground />
       <div className="login-card">
         <div className="login-header">
           <h1 className="login-title">AERA</h1>

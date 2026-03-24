@@ -2,6 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import '../styles/Technician.css';
 import Navbar from '../components/Navbar';
 import { issueAPI, technicianAPI } from '../services/api';
+import {
+  getIssueImageUrl,
+  getResolvedIssueCondition,
+  getResolvedIssueLocation,
+  getResolvedIssueSpecificIssues
+} from '../utils/issueDisplay';
 
 const WARNING_THRESHOLD_HOURS = 5;
 const LOCATION_TYPE_LABELS = {
@@ -319,14 +325,7 @@ function Technician({ userName, onLogout }) {
     };
   };
 
-  const getTaskLocation = (task) => ({
-    block: task?.location?.block || task?.data?.block || task?.block || '',
-    floor: task?.location?.floor || task?.data?.floor || task?.floor || '',
-    roomNumber: task?.location?.roomNumber || task?.data?.roomNumber || task?.roomNumber || '',
-    category: task?.location?.category || task?.data?.locationCategory || task?.locationCategory || '',
-    locationName: task?.location?.locationName || task?.data?.locationName || '',
-    locationFieldLabel: task?.location?.locationFieldLabel || task?.data?.locationFieldLabel || ''
-  });
+  const getTaskLocation = (task) => getResolvedIssueLocation(task);
 
   // const getPriorityColor = (priority) => {
   //   switch (priority) {
@@ -558,7 +557,7 @@ function Technician({ userName, onLogout }) {
 
                   <div className="task-body">
                     <p className="issue-description">
-                      <strong>Issue:</strong> {task.condition || 'See details'}
+                      <strong>Issue:</strong> {getResolvedIssueCondition(task) || 'See details'}
                     </p>
                     {task.relevantSpecificIssues?.length > 0 && (
                       <p className="issue-analysis">
@@ -640,7 +639,7 @@ function Technician({ userName, onLogout }) {
                   {delayedTasks.map((task) => {
                     const warning = getTaskWarningDetails(task);
                     const issueLabel = taskDisplayIdMap[task._id || task.id] || 'IS-';
-                    const issueSummary = task.relevantSpecificIssues?.[0] || task.condition || 'Issue details unavailable';
+                    const issueSummary = getResolvedIssueSpecificIssues(task)?.[0] || getResolvedIssueCondition(task) || 'Issue details unavailable';
 
                     return (
                       <button
@@ -725,12 +724,26 @@ function Technician({ userName, onLogout }) {
                 {/* Issue Details - Overall Condition and Issue */}
                 <div className="detail-section">
                   <h4>Issue Details</h4>
-                  <p><strong>Overall Condition:</strong> {selectedTask.condition || 'Not assessed'}</p>
+                  <p><strong>Overall Condition:</strong> {getResolvedIssueCondition(selectedTask) || 'Not assessed'}</p>
+                  {getIssueImageUrl(selectedTask) && (
+                    <div className="issue-image-section">
+                      <p><strong>Uploaded Image:</strong></p>
+                      <img src={getIssueImageUrl(selectedTask)} alt="Reported issue" className="issue-image-preview" />
+                      <a
+                        href={getIssueImageUrl(selectedTask)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="issue-image-link"
+                      >
+                        Open full image
+                      </a>
+                    </div>
+                  )}
                   {/* Display specific problems from the issue data */}
                   <p><strong>Specific Issues Found:</strong></p>
-                  {selectedTask.relevantSpecificIssues?.length > 0 ? (
+                  {getResolvedIssueSpecificIssues(selectedTask).length > 0 ? (
                     <div style={{ marginLeft: '20px' }}>
-                      {selectedTask.relevantSpecificIssues.map((problem, i) => (
+                      {getResolvedIssueSpecificIssues(selectedTask).map((problem, i) => (
                         <p key={i} style={{ margin: '5px 0', color: '#e74c3c' }}>{problem}</p>
                       ))}
                       {selectedTask.relevantOtherSuggestions && (

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import '../styles/SignUp.css';
 import { authAPI } from '../services/api';
+import AuthWavesBackground from '../components/AuthWavesBackground';
 
 function SignUp() {
   // const [formData, setFormData] = useState({
@@ -84,6 +85,7 @@ function SignUp() {
 
   return (
     <div className="signup-container">
+      <AuthWavesBackground />
       <div className="signup-card">
         <div className="signup-header">
           <h1 className="signup-title">AERA</h1>

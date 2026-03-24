@@ -2,6 +2,14 @@ import React, { useState, useEffect } from 'react';
 import '../styles/Manager.css';
 import Navbar from '../components/Navbar';
 import { issueAPI } from '../services/api';
+import {
+  formatUserTypeLabel,
+  getIssueImageUrl,
+  getResolvedIssueCondition,
+  getResolvedIssueLocation,
+  getResolvedIssueSpecificIssues,
+  getResolvedIssueUserType
+} from '../utils/issueDisplay';
 
 const WARNING_THRESHOLD_HOURS = 5;
 const ASSIGNMENT_REMINDER_THRESHOLD_HOURS = 3;
@@ -135,6 +143,7 @@ const getPrimaryTechnicianType = (issue) => {
 
   return issue?.issueType || 'general_support';
 };
+
 const WARNING_COPY = {
   notSolved: '⚠ Issue not solved yet. Please take action.',
   noResponse: '⚠ No response from technician.'
@@ -576,20 +585,21 @@ function Manager({ userName, onLogout }) {
     }
 
     return issueList.filter((issue) => {
-      const locationText = formatLocationForTable(issue.location, issue.data);
+      const resolvedLocation = getResolvedIssueLocation(issue);
+      const locationText = formatLocationForTable(resolvedLocation, issue.data);
       const searchFields = [
         getIssueDisplayId(issue),
-        issue.condition,
+        getResolvedIssueCondition(issue),
         issue.priority,
         issue.status,
-        issue.userType,
+        getResolvedIssueUserType(issue),
         getReporterDetails(issue).name,
         getReporterDetails(issue).email,
-        getLocationDetails(issue.location, issue.data).categoryLabel,
+        getLocationDetails(resolvedLocation, issue.data || {}).categoryLabel,
         locationText,
         getTechnicianTypesDisplay(issue),
-        ...(issue.specificIssues || []),
-        issue.otherSuggestions,
+        ...getResolvedIssueSpecificIssues(issue),
+        issue.otherSuggestions || issue.data?.otherSuggestions,
         issue.technicianNotes
       ];
 
@@ -911,9 +921,9 @@ function Manager({ userName, onLogout }) {
                         return (
                         <tr key={issue._id} className={`issue-row status-${issue.status} ${warning.isDelayed ? 'warning-delayed-row' : ''} ${isNewIssue(issue) ? 'new-issue-highlight' : ''}`}>
                           <td>{getIssueDisplayId(issue)}</td>
-                          <td>{formatLocationForTable(issue.location, issue.data) || '-'}</td>
-                          <td>{issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector'}</td>
-                          <td>{getLocationDetails(issue.location, issue.data).categoryLabel || 'N/A'}</td>
+                          <td>{formatLocationForTable(getResolvedIssueLocation(issue), issue.data) || '-'}</td>
+                          <td>{formatUserTypeLabel(getResolvedIssueUserType(issue))}</td>
+                          <td>{getLocationDetails(getResolvedIssueLocation(issue), issue.data || {}).categoryLabel || 'N/A'}</td>
                           <td>
                             {/* priority shown as plain lowercase text */}
                             {issue.priority ? issue.priority.toLowerCase() : ''}
@@ -1049,10 +1059,10 @@ function Manager({ userName, onLogout }) {
                         <tr key={issue._id} className="issue-row status-completed">
                           <td>{getIssueDisplayId(issue)}</td>
                           <td>
-                            {formatLocationForTable(issue.location, issue.data) || '-'}
+                            {formatLocationForTable(getResolvedIssueLocation(issue), issue.data) || '-'}
                           </td>
-                          <td>{issue.userType === 'student' ? 'Student' : issue.userType === 'faculty' ? 'Faculty' : 'Data Collector'}</td>
-                          <td>{getLocationDetails(issue.location, issue.data).categoryLabel || 'N/A'}</td>
+                          <td>{formatUserTypeLabel(getResolvedIssueUserType(issue))}</td>
+                          <td>{getLocationDetails(getResolvedIssueLocation(issue), issue.data || {}).categoryLabel || 'N/A'}</td>
                           <td>
                             {issue.priority ? issue.priority.toLowerCase() : ''}
                           </td>
@@ -1130,7 +1140,7 @@ function Manager({ userName, onLogout }) {
                   {delayedIssues.map((issue) => {
                     const warning = getIssueWarningDetails(issue);
                     const issueDisplayId = getIssueDisplayId(issue);
-                    const issueSummary = issue.specificIssues?.[0] || issue.condition || 'Issue details unavailable';
+                    const issueSummary = getResolvedIssueSpecificIssues(issue)?.[0] || getResolvedIssueCondition(issue) || 'Issue details unavailable';
                     return (
                       <button
                         key={issue._id}
@@ -1195,7 +1205,7 @@ function Manager({ userName, onLogout }) {
                 {/* Reporter Information - Dynamic based on userType */}
                 <div className="detail-section">
                   <h4>Reporter Information</h4>
-                  <p><strong>Type:</strong> {selectedIssue.userType === 'student' ? 'Student' : selectedIssue.userType === 'faculty' ? 'Faculty' : 'Data Collector'}</p>
+                  <p><strong>Type:</strong> {formatUserTypeLabel(getResolvedIssueUserType(selectedIssue))}</p>
                   <p><strong>Name:</strong> {getReporterDetails(selectedIssue).name}</p>
                   <p><strong>Email:</strong> {getReporterDetails(selectedIssue).email}</p>
                 </div>
@@ -1204,22 +1214,36 @@ function Manager({ userName, onLogout }) {
                 <div className="detail-section">
                   <h4>Location Details</h4>
                   {/* return to previous detailed layout for modal */}
-                <p><strong>Block:</strong> {selectedIssue.location?.block || 'N/A'}</p>
-                <p><strong>Floor:</strong> {selectedIssue.location?.floor || 'N/A'}</p>
-                <p><strong>{getLocationDetails(selectedIssue.location, selectedIssue.data).detailLabel}:</strong> {getLocationDetails(selectedIssue.location, selectedIssue.data).detailValue || 'N/A'}</p>
-                <p><strong>Location Type:</strong> {getLocationDetails(selectedIssue.location, selectedIssue.data).categoryLabel || 'N/A'}</p>
+                <p><strong>Block:</strong> {getResolvedIssueLocation(selectedIssue).block || 'N/A'}</p>
+                <p><strong>Floor:</strong> {getResolvedIssueLocation(selectedIssue).floor || 'N/A'}</p>
+                <p><strong>{getLocationDetails(getResolvedIssueLocation(selectedIssue), selectedIssue.data || {}).detailLabel}:</strong> {getLocationDetails(getResolvedIssueLocation(selectedIssue), selectedIssue.data || {}).detailValue || 'N/A'}</p>
+                <p><strong>Location Type:</strong> {getLocationDetails(getResolvedIssueLocation(selectedIssue), selectedIssue.data || {}).categoryLabel || 'N/A'}</p>
                 </div>
 
                 {/* Issue Details - Overall Condition and Issue */}
                 <div className="detail-section">
                   <h4>Issue Details</h4>
-                  <p><strong>Overall Condition:</strong> {selectedIssue.condition || 'Not assessed'}</p>
+                  <p><strong>Overall Condition:</strong> {getResolvedIssueCondition(selectedIssue) || 'Not assessed'}</p>
+                  {getIssueImageUrl(selectedIssue) && (
+                    <div className="issue-image-section">
+                      <p><strong>Uploaded Image:</strong></p>
+                      <img src={getIssueImageUrl(selectedIssue)} alt="Reported issue" className="issue-image-preview" />
+                      <a
+                        href={getIssueImageUrl(selectedIssue)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="issue-image-link"
+                      >
+                        Open full image
+                      </a>
+                    </div>
+                  )}
                   
                   {/* Display specific problems from the issue data */}
                   <p><strong>Specific Issues Found:</strong></p>
-                  {selectedIssue.specificIssues && selectedIssue.specificIssues.length > 0 ? (
+                  {getResolvedIssueSpecificIssues(selectedIssue).length > 0 ? (
                     <div style={{ marginLeft: '20px' }}>
-                      {selectedIssue.specificIssues.map((issue, i) => (
+                      {getResolvedIssueSpecificIssues(selectedIssue).map((issue, i) => (
                         <p key={i} style={{ margin: '5px 0', color: '#e74c3c' }}>• {issue}</p>
                       ))}
                       {selectedIssue.otherSuggestions && (
