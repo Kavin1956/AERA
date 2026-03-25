@@ -13,6 +13,7 @@
   margin: 0 auto;
   width: 100%;
   padding: 2rem;
+  min-width: 0;
 }
 
 .manager-header {
@@ -386,6 +387,7 @@
   grid-template-columns: minmax(320px, 2fr) minmax(220px, 1fr) minmax(220px, 1fr);
   gap: 1rem;
   align-items: end;
+  min-width: 0;
 }
 
 .delayed-issues-section {
@@ -514,9 +516,9 @@
 .issues-table-container {
   background: white;
   border-radius: 8px;
-  overflow: visible;
+  overflow: hidden;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  overflow-x: visible;
+  min-width: 0;
 }
 
 .issues-table {
@@ -1220,12 +1222,30 @@
     padding: 1.5rem;
   }
 
+  .manager-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .dashboard-stats {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
 }
 
 @media (max-width: 992px) {
+  .manager-header {
+    flex-direction: column;
+  }
+
+  .manager-header-tools {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .manager-controls {
+    grid-template-columns: 1fr;
+  }
+
   .issues-table {
     font-size: 0.9rem;
   }
@@ -1290,6 +1310,7 @@
 
   .issues-table {
     font-size: 0.85rem;
+    min-width: 760px;
   }
 
   .issues-table th,
@@ -1303,7 +1324,7 @@
   }
 
   .modal-content {
-    max-width: 90%;
+    max-width: 100%;
     max-height: 85vh;
   }
 
@@ -1387,7 +1408,7 @@
 
   .issues-table {
     font-size: 0.8rem;
-    min-width: 100%;
+    min-width: 720px;
   }
 
   .issues-table th {
@@ -1551,6 +1572,7 @@
 
   .issues-table {
     font-size: 0.75rem;
+    min-width: 680px;
   }
 
   .issues-table th {
@@ -1651,6 +1673,9 @@
   }
 
   .assign-btn,
+  .complete-btn,
+  .warning-btn,
+  .delete-btn,
   .cancel-btn {
     width: 100%;
     padding: 0.6rem;

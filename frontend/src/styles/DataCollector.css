@@ -13,6 +13,7 @@
   margin: 0 auto;
   width: 100%;
   padding: 2rem;
+  min-width: 0;
 }
 
 .data-collector-header {
@@ -39,6 +40,7 @@
   display: grid;
   grid-template-columns: 1fr 350px;
   gap: 2rem;
+  align-items: start;
 }
 
 .form-wrapper {
@@ -46,6 +48,7 @@
   border-radius: 8px;
   padding: 2rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  min-width: 0;
 }
 
 /* Step Indicator */
@@ -55,6 +58,7 @@
   align-items: center;
   margin-bottom: 2rem;
   padding-bottom: 1.5rem;
+  min-width: 0;
 }
 
 .step {
@@ -446,6 +450,7 @@
   height: fit-content;
   position: sticky;
   top: 100px;
+  min-width: 0;
 }
 
 .panel-header {
@@ -648,6 +653,8 @@
   .step-indicator {
     margin-bottom: 1.5rem;
     gap: 0.3rem;
+    overflow-x: auto;
+    padding-bottom: 1rem;
   }
 
   .step {
@@ -708,7 +715,7 @@
 
   .issues-panel {
     padding: 1rem;
-    max-height: 300px;
+    max-height: none;
   }
 
   .panel-header {
@@ -869,6 +876,7 @@
 
   .form-wrapper {
     padding: 0.5rem;
+    border-radius: 6px;
   }
 
   .step-indicator {
@@ -955,9 +963,8 @@
 
   .issues-panel {
     padding: 0.5rem;
-    max-height: 200px;
-    position: sticky;
-    bottom: 0;
+    max-height: none;
+    position: static;
     background: white;
     border-top: 2px solid #ecf0f1;
   }

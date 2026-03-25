@@ -27,6 +27,18 @@
   padding: 40px;
   width: 100%;
   max-width: 500px;
+  animation: slideUp 0.5s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .signup-header {
@@ -163,9 +175,39 @@
   font-size: 0.9rem;
 }
 
+@media (max-width: 768px) {
+  .signup-container {
+    padding: 16px;
+    justify-content: flex-start;
+  }
+
+  .signup-card {
+    padding: 28px;
+    max-width: 100%;
+    margin-top: 16px;
+  }
+
+  .signup-title {
+    font-size: 2rem;
+  }
+
+  .signup-heading {
+    font-size: 1.5rem;
+  }
+
+  .form-input {
+    font-size: 16px;
+  }
+}
+
 @media (max-width: 600px) {
+  .signup-container {
+    padding: 12px;
+  }
+
   .signup-card {
     padding: 25px;
+    border-radius: 12px;
   }
 
   .signup-title {
@@ -178,6 +220,52 @@
 
   .form-input {
     padding: 10px 12px;
-    font-size: 0.95rem;
+    font-size: 16px;
+  }
+
+  .signup-button {
+    min-height: 48px;
+  }
+
+  .signup-footer {
+    margin-top: 20px;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .signup-container {
+    padding: 10px;
+  }
+
+  .signup-card {
+    padding: 18px;
+  }
+
+  .signup-header {
+    margin-bottom: 22px;
+  }
+
+  .signup-title {
+    font-size: 1.75rem;
+  }
+
+  .signup-subtitle {
+    font-size: 0.8rem;
+  }
+
+  .signup-heading {
+    font-size: 1.25rem;
+  }
+
+  .signup-form {
+    gap: 16px;
+  }
+
+  .form-label,
+  .login-link,
+  .error-message,
+  .success-message {
+    font-size: 0.85rem;
   }
 }
