@@ -160,22 +160,6 @@ function SignUp() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="role" className="form-label">Role</label>
-            <select
-              id="role"
-              name="role"
-              className="form-input form-select"
-              value={formData.role}
-              onChange={handleChange}
-            >
-              <option value="data_collector">Data Collector</option>
-            </select>
-            <p className="info-text" style={{ fontSize: '0.85em', color: '#666', marginTop: '5px' }}>
-              Only Data Collectors can sign up. Technicians and Managers are pre-configured accounts.
-            </p>
-          </div>
-
-          <div className="form-group">
             <label htmlFor="userType" className="form-label">User Type</label>
             <select
               id="userType"
